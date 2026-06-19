@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ReefKeeper">
+<meta name="theme-color" content="#03080f">
+<title>ReefKeeper Tristan</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+--bg0:#03080f;--bg1:#071525;--bg2:#0c2040;--bg3:#102a55;
+--o1:#0d4a8a;--o2:#1a6cc4;--o3:#2d8ee8;--o4:#5ab3ff;
+--teal:#00c9b1;--td:rgba(0,201,177,.15);
+--amber:#f5a623;--ad:rgba(245,166,35,.12);
+--red:#ff4d4d;--rd:rgba(255,77,77,.12);
+--green:#00e676;--gd:rgba(0,230,118,.1);
+--t1:#e8f6ff;--t2:#7fb8e0;--t3:#3a6a8a;--t4:#1e3d55;
+--r:16px;--rs:11px;--rx:8px;
+--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
+--mw:285px;--tbh:58px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg0);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:var(--t1);overflow:hidden}
+/* BUBBLES */
+.bbl{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.bb{position:absolute;border-radius:50%;opacity:.03;background:var(--o3);animation:rise linear infinite}
+@keyframes rise{from{transform:translateY(110vh)}to{transform:translateY(-200px)}}
+/* APP */
+#app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:430px;margin:0 auto;background:var(--bg0)}
+@media(min-width:768px){#app{max-width:500px;box-shadow:0 0 100px rgba(0,0,0,.8)}body{background:#01040a;display:flex;align-items:center;justify-content:center}}
+/* OVERLAY */
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+#ov.open{opacity:1;pointer-events:all}
+/* SIDE MENU */
+#sm{position:fixed;top:0;left:calc(-1*var(--mw));width:var(--mw);height:100%;background:linear-gradient(160deg,#0a2040,#040e1c);z-index:201;transition:left .28s cubic-bezier(.4,0,.2,1);padding-top:calc(var(--st)+14px);border-right:.5px solid rgba(45,142,232,.18);display:flex;flex-direction:column;overflow:hidden}
+#sm.open{left:0}
+.sm-hd{padding:14px 18px 16px;border-bottom:.5px solid rgba(45,142,232,.1)}
+.sm-title{font-size:16px;font-weight:700;background:linear-gradient(90deg,var(--o4),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sm-sub{font-size:11px;color:var(--t3);margin-top:2px}
+.sm-body{flex:1;overflow-y:auto;padding:8px 10px 16px;scrollbar-width:none}
+.sm-body::-webkit-scrollbar{display:none}
+.sm-sec{font-size:10px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:1.2px;padding:12px 10px 5px}
+.sm-it{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--rs);cursor:pointer;font-size:13px;color:var(--t2);margin-bottom:1px;transition:background .15s}
+.sm-it:active{background:rgba(45,142,232,.1)}
+.sm-ico{width:28px;height:28px;border-radius:7px;background:rgba(45,142,232,.08);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sm-ft{padding:12px 16px;border-top:.5px solid rgba(45,142,232,.1);font-size:11px;color:var(--t3);line-height:1.7}
+.sm-ft strong{color:var(--o4);font-weight:500}
+/* TEST ITEMS in menu */
+.ti{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:var(--rx);cursor:pointer;margin-bottom:1px;transition:background .12s}
+.ti:active{background:rgba(45,142,232,.1)}
+.tdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.tname{flex:1;font-size:13px;color:var(--t2)}
+.tval{font-size:12px;font-weight:700}
+.tval.ok{color:var(--teal)}.tval.warn{color:var(--amber)}.tval.danger{color:var(--red)}.tval.nd{color:var(--t4)}
+.tdate{font-size:10px;color:var(--t4)}
+/* HEADER */
+.hdr{background:rgba(7,21,37,.96);padding:calc(var(--st)+10px) 14px 11px;display:flex;align-items:center;gap:11px;flex-shrink:0;border-bottom:.5px solid rgba(45,142,232,.1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:relative;z-index:10}
+.hbg{width:36px;height:36px;border-radius:9px;background:rgba(45,142,232,.1);border:.5px solid rgba(45,142,232,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.hbg:active{background:rgba(45,142,232,.22)}
+.bln{display:flex;flex-direction:column;gap:4px}
+.bln span{width:15px;height:1.5px;background:var(--o4);border-radius:2px;display:block}
+.htx{flex:1}
+.htx h1{font-size:16px;font-weight:700;background:linear-gradient(90deg,var(--o4),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.3px}
+.htx p{font-size:11px;color:var(--t3);margin-top:1px}
+.hwx{display:flex;flex-direction:column;align-items:flex-end;gap:2px;cursor:pointer;min-width:44px}
+.hw-t{font-size:15px;font-weight:700;color:var(--t1);line-height:1}
+.hw-c{font-size:10px;color:var(--t3)}
+/* BOTTOM TAB BAR */
+.tbr{background:rgba(7,21,37,.97);border-top:.5px solid rgba(45,142,232,.1);display:flex;padding:6px 0 calc(var(--sb)+6px);flex-shrink:0}
+.tbi{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;transition:all .15s}
+.tbi svg{width:22px;height:22px;stroke:var(--t3);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.tbi span{font-size:10px;color:var(--t3);transition:color .15s}
+.tbi.active svg{stroke:var(--teal)}
+.tbi.active span{color:var(--teal)}
+/* CONTENT */
+.cnt{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent}
+.cnt::-webkit-scrollbar{width:2px}
+.cnt::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
+.pg{display:none;padding:14px;padding-bottom:24px;animation:fi .2s ease}
+.pg.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+/* SECTION HDR */
+.sh{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
+.sh:first-child{margin-top:2px}
+.shl{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.2px}
+.shr{font-size:13px;color:var(--o3);cursor:pointer}
+/* GLASS */
+.gl{background:linear-gradient(135deg,rgba(13,32,64,.92),rgba(7,21,37,.96));border:.5px solid rgba(45,142,232,.15);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.gls{background:linear-gradient(135deg,rgba(13,32,64,.9),rgba(7,21,37,.95));border:.5px solid rgba(45,142,232,.12);border-radius:var(--rs);padding:11px 13px;margin-bottom:8px}
+/* ALERTS */
+.al{border-radius:var(--rs);padding:10px 13px;margin-bottom:9px;display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.4}
+.a-ok{background:var(--gd);border:.5px solid rgba(0,230,118,.2);color:#40c06a}
+.a-ok strong{color:var(--green)}
+.a-warn{background:var(--ad);border:.5px solid rgba(245,166,35,.3);color:#c89420}
+.a-warn strong{color:var(--amber)}
+.a-danger{background:var(--rd);border:.5px solid rgba(255,77,77,.3);color:#e07070}
+.a-danger strong{color:var(--red)}
+.a-info{background:rgba(45,142,232,.08);border:.5px solid rgba(45,142,232,.2);color:var(--t2)}
+.a-info strong{color:var(--o4)}
+.ai{font-size:14px;flex-shrink:0;margin-top:1px}
+/* PHASE CARD */
+.phase-card{border-radius:var(--r);padding:13px 15px;margin-bottom:10px;border:.5px solid}
+/* BILAN */
+.bg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:11px}
+.bg4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px}
+.bx{background:var(--bg1);border:.5px solid rgba(45,142,232,.1);border-radius:var(--rs);padding:11px 8px;text-align:center}
+.bv{font-size:20px;font-weight:700;line-height:1}
+.bv.t{color:var(--teal)}.bv.a{color:var(--amber)}.bv.b{color:var(--o4)}.bv.g{color:var(--green)}.bv.r{color:var(--red)}
+.bl{font-size:10px;color:var(--t3);margin-top:3px;font-weight:500}
+/* MESURE ROWS */
+.mr{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:.5px solid rgba(45,142,232,.07);cursor:pointer;transition:background .12s}
+.mr:last-child{border-bottom:none}
+.mr:active{background:rgba(45,142,232,.05)}
+.mn{font-size:13px;color:var(--t2)}
+.mk{font-size:10px;color:var(--t4);margin-top:1px}
+.mv{font-size:15px;font-weight:700}
+.mv.ok{color:var(--teal)}.mv.warn{color:var(--amber)}.mv.danger{color:var(--red)}.mv.nd{color:var(--t4)}
+.md{font-size:10px;color:var(--t4);margin-top:2px;text-align:right}
+/* INPUT */
+.fd{margin-bottom:10px}
+.fd label{display:block;font-size:12px;color:var(--t2);margin-bottom:4px;font-weight:500}
+.fd input,.fd select,.fd textarea{width:100%;background:rgba(12,32,64,.8);border:.5px solid rgba(45,142,232,.2);border-radius:var(--rx);padding:10px 12px;color:var(--t1);font-size:15px;font-family:inherit;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none}
+.fd input:focus,.fd select:focus,.fd textarea:focus{border-color:rgba(45,142,232,.6)}
+.fd select option{background:#0c2040}
+.fd textarea{resize:none;min-height:72px;line-height:1.5}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.btn-o{background:linear-gradient(135deg,var(--o1),var(--o2));color:#fff;width:100%;box-shadow:0 4px 16px rgba(26,108,196,.3)}
+.btn-t{background:linear-gradient(135deg,#007a6a,var(--teal));color:#fff;width:100%}
+.btn-g{background:rgba(45,142,232,.08);color:var(--t1);border:.5px solid rgba(45,142,232,.2)}
+.btn-r{background:var(--rd);color:var(--red);border:.5px solid rgba(255,77,77,.3)}
+.btn-sm{padding:7px 13px;font-size:13px}
+/* CREATURE CARD */
+.cc{display:flex;align-items:flex-start;gap:11px;padding:12px 0;border-bottom:.5px solid rgba(45,142,232,.07);cursor:pointer}
+.cc:last-child{border-bottom:none}
+.ca{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--bg2),var(--bg3));display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:.5px solid rgba(45,142,232,.15);overflow:hidden}
+.ca img{width:100%;height:100%;object-fit:cover}
+.ca.it{border-color:rgba(0,201,177,.4);box-shadow:0 0 10px rgba(0,201,177,.12)}
+.ca.pl{opacity:.7;border-color:rgba(245,166,35,.3)}
+.ci{flex:1;min-width:0}
+.cn{font-size:14px;font-weight:600}
+.cs{font-size:11px;color:var(--t3);font-style:italic;margin-top:2px}
+.cm{font-size:11px;color:var(--t4);margin-top:3px}
+.cbadge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;margin-top:4px}
+.b-it{background:var(--td);color:var(--teal);border:.5px solid rgba(0,201,177,.25)}
+.b-pl{background:var(--ad);color:var(--amber);border:.5px solid rgba(245,166,35,.25)}
+.b-de{background:var(--rd);color:var(--red);border:.5px solid rgba(255,77,77,.25)}
+.cc-ch{color:var(--t4);font-size:16px;flex-shrink:0;margin-top:12px}
+/* UNLOCK */
+.ulk{background:linear-gradient(90deg,rgba(0,201,177,.08),rgba(45,142,232,.06));border:.5px solid rgba(0,201,177,.2);border-radius:var(--rs);padding:9px 12px;margin:9px 0;display:flex;align-items:center;gap:9px}
+.ulk-t{font-size:12px;color:var(--t2);line-height:1.4}
+.ulk-t strong{color:var(--teal)}
+/* TIP */
+.tip{background:rgba(13,74,138,.1);border:.5px solid rgba(45,142,232,.15);border-radius:var(--rs);padding:11px 13px;margin-bottom:8px}
+.tip-h{font-size:11px;font-weight:700;color:var(--o4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.tip-li{display:flex;gap:7px;margin-bottom:5px;font-size:13px;color:var(--t2);line-height:1.4;align-items:flex-start}
+.tip-li::before{content:"•";color:var(--o3);flex-shrink:0}
+.tip-li:last-child{margin-bottom:0}
+/* JOURNAL */
+.je{padding:11px 0;border-bottom:.5px solid rgba(45,142,232,.07);cursor:pointer}
+.je:last-child{border-bottom:none}
+.je-dot{width:7px;height:7px;border-radius:50%;background:var(--o3);flex-shrink:0;margin-top:4px}
+.je-dot.t{background:var(--teal)}.je-dot.a{background:var(--amber)}.je-dot.r{background:var(--red)}
+.je-dt{font-size:10px;color:var(--t3);margin-bottom:2px}
+.je-ti{font-size:14px;font-weight:600;margin-bottom:3px}
+.je-nt{font-size:12px;color:var(--t2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.je-tg{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:5px;background:rgba(45,142,232,.1);color:var(--o4);border:.5px solid rgba(45,142,232,.2)}
+/* TASK */
+.tr{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:.5px solid rgba(45,142,232,.07)}
+.tr:last-child{border-bottom:none}
+.tc{width:21px;height:21px;border-radius:50%;border:1.5px solid;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700}
+.c-dn{border-color:var(--teal);background:var(--td);color:var(--teal)}
+.c-pe{border-color:rgba(255,255,255,.18);color:transparent}
+.c-lt{border-color:var(--red);background:var(--rd);color:var(--red)}
+.c-so{border-color:var(--amber);color:transparent}
+.tl{flex:1;font-size:13px}
+.tl.dn{color:var(--t3);text-decoration:line-through}
+.td2{font-size:11px;color:var(--t3);white-space:nowrap}
+.td2.lt{color:var(--red)}.td2.so{color:var(--amber)}
+/* CHART */
+.cw{position:relative;height:190px;margin:8px 0}
+/* PILLS */
+.pls{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.pls::-webkit-scrollbar{display:none}
+.pl{padding:5px 12px;border-radius:20px;font-size:13px;cursor:pointer;border:.5px solid rgba(45,142,232,.18);color:var(--t3);white-space:nowrap;transition:all .15s;font-weight:500}
+.pl.active{background:linear-gradient(135deg,var(--o1),var(--o2));border-color:var(--o2);color:#fff}
+/* SEG */
+.seg{display:flex;background:rgba(12,32,64,.8);border-radius:var(--rs);padding:3px;gap:2px;margin-bottom:12px;border:.5px solid rgba(45,142,232,.1)}
+.sb{flex:1;padding:7px;text-align:center;border-radius:8px;font-size:13px;cursor:pointer;color:var(--t3);transition:all .2s;font-weight:500}
+.sb.active{background:linear-gradient(135deg,var(--o2),var(--o3));color:#fff}
+/* CALC */
+.cr{background:linear-gradient(135deg,var(--td),rgba(45,142,232,.08));border:.5px solid rgba(0,201,177,.3);border-radius:var(--rs);padding:16px;margin-top:12px;text-align:center}
+.cn2{font-size:40px;font-weight:800;background:linear-gradient(90deg,var(--teal),var(--o4));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-2px;line-height:1}
+.cu{font-size:13px;color:var(--t2);margin-top:4px}
+.cn3{font-size:11px;color:var(--t3);margin-top:7px;line-height:1.5}
+/* EQUIP */
+.er{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid rgba(45,142,232,.07)}
+.er:last-child{border-bottom:none}
+.ei{width:34px;height:34px;border-radius:8px;background:rgba(45,142,232,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.en{flex:1;font-size:13px;font-weight:500}
+.ed{font-size:11px;color:var(--t3);margin-top:1px}
+.ep{font-size:12px;color:var(--o4);font-weight:600;white-space:nowrap}
+/* GALLERY */
+.gg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;border-radius:var(--r);overflow:hidden;margin-bottom:10px}
+.gc{aspect-ratio:1;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;overflow:hidden;position:relative}
+.gc img{width:100%;height:100%;object-fit:cover}
+.gc-del{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+/* TOGGLE */
+.tgr{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:.5px solid rgba(45,142,232,.07)}
+.tgr:last-child{border-bottom:none}
+.tg{width:42px;height:25px;background:var(--bg3);border-radius:13px;position:relative;cursor:pointer;transition:background .2s}
+.tg.on{background:var(--o2)}
+.tgk{width:21px;height:21px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.tg.on .tgk{left:19px}
+/* MODAL */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.mo.open{display:flex}
+.mdl{background:linear-gradient(180deg,#0d2245,#060e1c);border:.5px solid rgba(45,142,232,.2);border-radius:26px 26px 0 0;padding:18px 16px calc(var(--sb)+22px);width:100%;max-width:430px;max-height:93vh;overflow-y:auto;animation:su .26s cubic-bezier(.4,0,.2,1)}
+@media(min-width:768px){.mdl{max-width:500px}}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mh{width:38px;height:4px;background:rgba(45,142,232,.3);border-radius:2px;margin:0 auto 15px}
+.mt{font-size:19px;font-weight:700;margin-bottom:15px;background:linear-gradient(90deg,var(--t1),var(--o4));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+/* TOAST */
+.toast{position:fixed;bottom:calc(var(--tbh) + var(--sb) + 10px);left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--o1),var(--o2));color:#fff;padding:9px 20px;border-radius:30px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(26,108,196,.5);animation:ta 2.3s ease forwards}
+@keyframes ta{0%{opacity:0;transform:translateX(-50%) translateY(8px)}12%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
+/* WEEK CHECK */
+.wc{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:.5px solid rgba(45,142,232,.07)}
+.wc:last-child{border-bottom:none}
+.wck{width:20px;height:20px;border-radius:6px;border:1.5px solid rgba(45,142,232,.3);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px}
+.wck.dn{background:var(--td);border-color:var(--teal);color:var(--teal)}
+.wcl{font-size:13px;flex:1}
+.wcl.dn{color:var(--t3);text-decoration:line-through}
+/* EMPTY */
+.emp{text-align:center;padding:28px 16px;color:var(--t3)}
+.emp-i{font-size:36px;margin-bottom:9px;opacity:.6}
+.emp-t{font-size:13px;line-height:1.6}
+/* SEARCH */
+.srch{width:100%;background:rgba(12,32,64,.8);border:.5px solid rgba(45,142,232,.2);border-radius:var(--rx);padding:9px 12px;color:var(--t1);font-size:14px;font-family:inherit;outline:none;margin-bottom:11px}
+.srch:focus{border-color:rgba(45,142,232,.6)}
+/* ROW ACTIONS */
+.row-act{display:flex;gap:6px;margin-top:6px}
+/* DECOUVERTE */
+.dc{background:var(--bg1);border:.5px solid rgba(45,142,232,.12);border-radius:var(--r);padding:13px;margin-bottom:9px;cursor:pointer;transition:background .15s}
+.dc:active{background:var(--bg2)}
+.dc-top{display:flex;align-items:center;gap:11px;margin-bottom:8px}
+.dc-ico{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--bg2),var(--bg3));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.dc-n{font-size:14px;font-weight:600}
+.dc-s{font-size:12px;color:var(--t3);font-style:italic;margin-top:2px}
+.diff{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;margin-top:3px}
+.diff-1{background:var(--gd);color:var(--green)}
+.diff-2{background:rgba(45,142,232,.1);color:var(--o4)}
+.diff-3{background:var(--ad);color:var(--amber)}
+.diff-4{background:var(--rd);color:var(--red)}
+
+/* LOGIN SCREEN */
+#login-screen{position:fixed;inset:0;z-index:500;background:linear-gradient(160deg,#03080f,#071a30);display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{width:100%;max-width:360px;background:linear-gradient(135deg,rgba(13,32,64,.95),rgba(7,21,37,.98));border:.5px solid rgba(45,142,232,.18);border-radius:var(--r);padding:32px 26px;text-align:center}
+.login-logo{font-size:38px;margin-bottom:8px}
+.login-title{font-size:19px;font-weight:700;background:linear-gradient(90deg,var(--o4),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--t3);margin-bottom:22px}
+.login-error{font-size:12px;color:var(--red);min-height:16px;margin-bottom:6px;text-align:left}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🐠</div>
+    <div class="login-title">ReefKeeper Tristan</div>
+    <div class="login-sub">Connecte-toi pour accéder à ton aquarium</div>
+    <div class="fd" style="text-align:left">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="ton@email.com" autocomplete="username">
+    </div>
+    <div class="fd" style="text-align:left">
+      <label>Mot de passe</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn btn-o" id="login-btn" onclick="doLogin()" style="margin-top:8px">Se connecter</button>
+  </div>
+</div>
+<div class="bbl" id="bbl"></div>
+<div id="app" style="display:none">
+  <div id="ov" onclick="closeMenu()"></div>
+
+  <!-- SIDE MENU -->
+  <div id="sm">
+    <div class="sm-hd">
+      <div class="sm-title">🐠 ReefKeeper Tristan</div>
+      <div class="sm-sub">Reefer 300 XL G3 · Depuis le 8 juin 2026</div>
+    </div>
+    <div class="sm-body">
+      <div class="sm-sec">Outils</div>
+      <div class="sm-it" onclick="openModal('modal-mesure');closeMenu()"><div class="sm-ico">✏️</div>Saisir une mesure</div>
+      <div class="sm-it" onclick="nav('calc');closeMenu()"><div class="sm-ico">🧮</div>Calculateur</div>
+      <div class="sm-it" onclick="nav('equipment');closeMenu()"><div class="sm-ico">⚙️</div>Équipement</div>
+      <div class="sm-it" onclick="nav('gallery');closeMenu()"><div class="sm-ico">📸</div>Galerie</div>
+      <div class="sm-it" onclick="nav('settings');closeMenu()"><div class="sm-ico">🎛</div>Réglages</div>
+
+      <div class="sm-sec">Kit MCP — Mes relevés</div>
+      <div id="menu-mcp"></div>
+
+      <div class="sm-sec">Kit Pro Multi — Mes relevés</div>
+      <div id="menu-pro"></div>
+
+      <div class="sm-sec">Compte</div>
+      <div class="sm-it" onclick="doLogout()" style="color:var(--red)"><div class="sm-ico">🚪</div>Se déconnecter</div>
+    </div>
+    <div class="sm-ft">
+      <strong>Connecté :</strong> <span id="sm-user-email">—</span><br>
+      <strong>Volume :</strong> 300 L · Mer récifale<br>
+      <strong>Mise en eau :</strong> 8 juin 2026<br>
+      <strong>Sel :</strong> Red Sea Salt
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hbg" onclick="openMenu()"><div class="bln"><span></span><span></span><span></span></div></div>
+    <div class="htx">
+      <h1 id="htitle">Mon Aquarium</h1>
+      <p id="hsub">Reefer 300 XL G3 · Démarré le 8 juin 2026</p>
+    </div>
+    <div class="hwx" onclick="fetchWeather()">
+      <div class="hw-t" id="hw-t">—°</div>
+      <div class="hw-c" id="hw-c">Nemours</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="cnt">
+
+    <!-- MON AQUARIUM -->
+    <div class="pg active" id="pg-aquarium">
+      <div id="phase-card"></div>
+      <div id="main-alerts"></div>
+      <div class="bg3" id="bilan-top"></div>
+      <div class="sh"><span class="shl">Derniers relevés</span><span class="shr" onclick="openModal('modal-mesure')">+ Saisir</span></div>
+      <div class="gl" id="last-measures"></div>
+      <div class="sh"><span class="shl">Aujourd'hui</span></div>
+      <div class="gl" id="daily-checks"></div>
+    </div>
+
+    <!-- HISTORIQUE -->
+    <div class="pg" id="pg-history">
+      <div class="pls" id="hfp">
+        <div class="pl active" onclick="setHF(7,this)">7 jours</div>
+        <div class="pl" onclick="setHF(30,this)">30 jours</div>
+        <div class="pl" onclick="setHF(90,this)">90 jours</div>
+        <div class="pl" onclick="setHF(365,this)">1 an</div>
+      </div>
+      <div class="seg"><div class="sb active" onclick="setHV('chart',this)">Graphique</div><div class="sb" onclick="setHV('table',this)">Tableau</div></div>
+      <div class="fd"><label>Paramètre</label>
+        <select id="hp" onchange="renderHistory()">
+          <option value="temp">Température</option><option value="sal">Salinité</option>
+          <option value="ph">pH</option><option value="kh">KH</option>
+          <option value="no3">NO₃</option><option value="no2">NO₂</option>
+          <option value="nh3">NH₃</option><option value="ca">Calcium</option>
+          <option value="mg">Magnésium</option><option value="po4">PO₄</option>
+        </select>
+      </div>
+      <div id="hcw" class="gl"><div class="cw"><canvas id="hch"></canvas></div></div>
+      <div id="htw" class="gl" style="display:none">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <thead><tr>
+            <th style="color:var(--t3);padding:4px 6px;text-align:left;font-size:10px">Date</th>
+            <th style="color:var(--t3);font-size:10px;text-align:left">Valeur</th>
+            <th style="color:var(--t3);font-size:10px;text-align:left">Statut</th>
+            <th style="color:var(--t3);font-size:10px"></th>
+          </tr></thead>
+          <tbody id="htb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- POPULATION -->
+    <div class="pg" id="pg-population">
+      <div class="bg3">
+        <div class="bx"><div class="bv t" id="cf">0</div><div class="bl">Poissons</div></div>
+        <div class="bx"><div class="bv a" id="ci">0</div><div class="bl">Invertébrés</div></div>
+        <div class="bx"><div class="bv b" id="cp">0</div><div class="bl">Prévus</div></div>
+      </div>
+      <div class="sh"><span class="shl">Dans le bac</span><span class="shr" onclick="openModal('modal-animal')">+ Ajouter</span></div>
+      <div class="gl" id="fish-tank"></div>
+      <div class="sh"><span class="shl">Prévus / Souhaités</span></div>
+      <div class="gl" id="fish-plan"></div>
+      <div class="sh"><span class="shl">Coraux dans le bac</span><span class="shr" onclick="openModal('modal-coral')">+ Ajouter</span></div>
+      <div class="gl" id="coral-section"></div>
+    </div>
+
+    <!-- JOURNAL -->
+    <div class="pg" id="pg-journal">
+      <input class="srch" id="j-search" placeholder="Rechercher dans le journal..." oninput="renderJournal()">
+      <div class="sh"><span class="shl">Entrées</span><span class="shr" onclick="openModal('modal-journal')">+ Nouvelle</span></div>
+      <div class="gl" id="journal-list"></div>
+    </div>
+
+    <!-- DÉCOUVERTES -->
+    <div class="pg" id="pg-decouvertes">
+      <div class="al a-info"><span class="ai">🔭</span><div><strong>Recommandations pour ton bac</strong> — basées sur l'âge et le volume de ton Reefer 300 XL G3.</div></div>
+      <div class="sh"><span class="shl">Poissons recommandés</span></div>
+      <div id="dec-fish"></div>
+      <div class="sh"><span class="shl">Coraux recommandés</span></div>
+      <div id="dec-coral"></div>
+      <div class="sh"><span class="shl">Invertébrés recommandés</span></div>
+      <div id="dec-inv"></div>
+    </div>
+
+    <!-- CALCULATEUR -->
+    <div class="pg" id="pg-calc">
+      <div class="seg" id="cseg">
+        <div class="sb active" onclick="setCalc('kh',this)">KH</div>
+        <div class="sb" onclick="setCalc('ca',this)">Ca</div>
+        <div class="sb" onclick="setCalc('mg',this)">Mg</div>
+        <div class="sb" onclick="setCalc('water',this)">💧 Eau</div>
+      </div>
+      <div class="gl" id="calc-content"></div>
+    </div>
+
+    <!-- ÉQUIPEMENT -->
+    <div class="pg" id="pg-equipment">
+      <div class="bg3">
+        <div class="bx"><div class="bv t" id="eq-tot">—</div><div class="bl">Total investi</div></div>
+        <div class="bx"><div class="bv b" id="eq-nb">0</div><div class="bl">Équipements</div></div>
+        <div class="bx"><div class="bv g">✓</div><div class="bl">Opérationnel</div></div>
+      </div>
+      <div class="sh"><span class="shl">Matériel</span><span class="shr" onclick="openModal('modal-equip')">+ Ajouter</span></div>
+      <div class="gl" id="equip-list"></div>
+    </div>
+
+    <!-- GALERIE -->
+    <div class="pg" id="pg-gallery">
+      <div class="gg" id="gg"></div>
+      <div id="gg-empty"></div>
+      <label class="btn btn-g" style="width:100%;display:flex;cursor:pointer;justify-content:center;gap:7px">
+        📸 Ajouter des photos
+        <input type="file" accept="image/*" multiple style="display:none" onchange="addPhotos(this)">
+      </label>
+    </div>
+
+    <!-- RÉGLAGES -->
+    <div class="pg" id="pg-settings">
+      <div class="sh"><span class="shl">Notifications</span></div>
+      <div class="gl">
+        <div class="tgr"><span style="font-size:13px">Alertes paramètres</span><div class="tg on" onclick="this.classList.toggle('on')"><div class="tgk"></div></div></div>
+        <div class="tgr"><span style="font-size:13px">Rappels maintenance</span><div class="tg on" onclick="this.classList.toggle('on')"><div class="tgk"></div></div></div>
+      </div>
+      <div class="sh"><span class="shl">Plages de référence</span></div>
+      <div class="gl"><table style="width:100%;font-size:12px;border-collapse:collapse" id="ref-t"></table></div>
+      <div class="sh"><span class="shl">Sauvegarde</span></div>
+      <div class="gl">
+        <button class="btn btn-o" style="margin-bottom:8px" onclick="exportData()">📤 Exporter JSON</button>
+        <label class="btn btn-g" style="width:100%;cursor:pointer;display:flex;justify-content:center;margin-bottom:8px">
+          📥 Importer JSON
+          <input type="file" accept=".json" style="display:none" onchange="importData(this)">
+        </label>
+        <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
+      </div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.0</div>
+    </div>
+
+  </div><!-- /cnt -->
+
+  <!-- BOTTOM TAB BAR -->
+  <div class="tbr">
+    <div class="tbi active" id="tb-aquarium" onclick="nav('aquarium')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Aquarium</span>
+    </div>
+    <div class="tbi" id="tb-history" onclick="nav('history')">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Historique</span>
+    </div>
+    <div class="tbi" id="tb-population" onclick="nav('population')">
+      <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      <span>Population</span>
+    </div>
+    <div class="tbi" id="tb-journal" onclick="nav('journal')">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Journal</span>
+    </div>
+    <div class="tbi" id="tb-decouvertes" onclick="nav('decouvertes')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      <span>Découvertes</span>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MESURE -->
+<div class="mo" id="modal-mesure">
+  <div class="mdl">
+    <div class="mh"></div><div class="mt">Saisir une mesure</div>
+    <div class="fd"><label>Paramètre</label>
+      <select id="ap">
+        <option value="temp">🌡 Température (°C)</option>
+        <option value="sal">🧂 Salinité (ppt)</option>
+        <option value="ph">⚗️ pH — Kit MCP</option>
+        <option value="kh">🪨 KH (dKH) — Kit MCP + Pro Multi</option>
+        <option value="no3">🟡 NO₃ (mg/L) — Kit MCP</option>
+        <option value="no2">🟠 NO₂ (mg/L) — Kit MCP</option>
+        <option value="nh3">🔴 NH₃/NH₄ (mg/L) — Kit MCP</option>
+        <option value="ca">💠 Calcium (mg/L) — Kit Pro Multi</option>
+        <option value="mg">🔵 Magnésium (mg/L) — Kit Pro Multi</option>
+        <option value="po4">🟤 PO₄ (mg/L)</option>
+      </select>
+    </div>
+    <div class="fd"><label>Valeur</label><input type="number" id="av" step="any" placeholder="Ex : 25.2" inputmode="decimal"></div>
+    <div class="fd"><label>Commentaire (optionnel)</label><input type="text" id="ac" placeholder="Ex : après brassage"></div>
+    <button class="btn btn-o" onclick="addMeasure()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-g" onclick="closeModal('modal-mesure')" style="width:100%">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL ANIMAL -->
+<div class="mo" id="modal-animal">
+  <div class="mdl">
+    <div class="mh"></div><div class="mt" id="an-modal-title">Ajouter un animal</div>
+    <div class="fd"><label>Catégorie</label><select id="an-cat"><option value="fish">🐟 Poisson</option><option value="inv">🦐 Invertébré</option></select></div>
+    <div class="fd"><label>Statut</label><select id="an-status"><option value="tank">✅ Dans le bac</option><option value="planned">⏳ Prévu / souhaité</option></select></div>
+    <div class="fd"><label>Nom commun</label><input type="text" id="an-name" placeholder="Ex : Clown Maroon"></div>
+    <div class="fd"><label>Nom scientifique</label><input type="text" id="an-sci" placeholder="Ex : Premnas biaculeatus"></div>
+    <div class="fd"><label>Emoji</label><input type="text" id="an-emoji" placeholder="🐟" maxlength="4" style="font-size:20px;text-align:center"></div>
+    <div class="fd"><label>Date d'introduction</label><input type="date" id="an-date"></div>
+    <div class="fd"><label>Notes</label><textarea id="an-notes" placeholder="Comportement, emplacement..."></textarea></div>
+    <div class="fd"><label>Photo personnelle (optionnel)</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;background:rgba(12,32,64,.8);border:.5px solid rgba(45,142,232,.2);border-radius:var(--rx);font-size:13px;color:var(--t2)">
+        📷 Choisir une photo
+        <input type="file" accept="image/*" style="display:none" onchange="previewAnimalPhoto(this)" id="an-photo-input">
+      </label>
+      <div id="an-photo-preview" style="margin-top:7px"></div>
+    </div>
+    <input type="hidden" id="an-id" value="">
+    <input type="hidden" id="an-photo" value="">
+    <button class="btn btn-o" onclick="saveAnimal()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-g" onclick="closeModal('modal-animal')" style="width:100%">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL CORAIL -->
+<div class="mo" id="modal-coral">
+  <div class="mdl">
+    <div class="mh"></div><div class="mt" id="co-modal-title">Ajouter un corail</div>
+    <div class="fd"><label>Statut</label><select id="co-status"><option value="planned">⏳ Prévu</option><option value="tank">✅ Dans le bac</option></select></div>
+    <div class="fd"><label>Nom</label><input type="text" id="co-name" placeholder="Ex : Chalice Ultra Sherbert"></div>
+    <div class="fd"><label>Type</label><select id="co-type"><option value="lps">LPS — Grand polype</option><option value="sps">SPS — Petit polype</option><option value="soft">Corail mou</option><option value="nem">Anémone</option><option value="autre">Autre</option></select></div>
+    <div class="fd"><label>Emoji</label><input type="text" id="co-emoji" placeholder="🪸" maxlength="4" style="font-size:20px;text-align:center"></div>
+    <div class="fd"><label>Emplacement</label><input type="text" id="co-location" placeholder="Ex : milieu, ombre partielle"></div>
+    <div class="fd"><label>Notes</label><textarea id="co-notes" placeholder="Couleur, croissance, comportement..."></textarea></div>
+    <div class="fd"><label>Photo personnelle (optionnel)</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;background:rgba(12,32,64,.8);border:.5px solid rgba(45,142,232,.2);border-radius:var(--rx);font-size:13px;color:var(--t2)">
+        📷 Choisir une photo
+        <input type="file" accept="image/*" style="display:none" onchange="previewCoralPhoto(this)" id="co-photo-input">
+      </label>
+      <div id="co-photo-preview" style="margin-top:7px"></div>
+    </div>
+    <input type="hidden" id="co-id" value="">
+    <input type="hidden" id="co-photo" value="">
+    <button class="btn btn-t" onclick="saveCoral()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-g" onclick="closeModal('modal-coral')" style="width:100%">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL JOURNAL -->
+<div class="mo" id="modal-journal">
+  <div class="mdl">
+    <div class="mh"></div><div class="mt">Nouvelle entrée</div>
+    <div class="fd"><label>Titre</label><input type="text" id="jn-title" placeholder="Ex : Observation pierres vivantes"></div>
+    <div class="fd"><label>Catégorie</label>
+      <select id="jn-cat">
+        <option value="observation">👁 Observation</option>
+        <option value="eau">💧 Eau / chimie</option>
+        <option value="poisson">🐟 Poisson</option>
+        <option value="corail">🪸 Corail</option>
+        <option value="maintenance">🔧 Maintenance</option>
+        <option value="algue">🌿 Algues</option>
+        <option value="alerte">⚠️ Alerte</option>
+        <option value="autre">📝 Autre</option>
+      </select>
+    </div>
+    <div class="fd"><label>Note</label><textarea id="jn-note" placeholder="Décris l'événement..."></textarea></div>
+    <div class="fd"><label>Photo (optionnel)</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;background:rgba(12,32,64,.8);border:.5px solid rgba(45,142,232,.2);border-radius:var(--rx);font-size:13px;color:var(--t2)">
+        📷 Ajouter une photo
+        <input type="file" accept="image/*" style="display:none" onchange="previewJournalPhoto(this)">
+      </label>
+      <div id="jn-photo-preview" style="margin-top:7px"></div>
+    </div>
+    <input type="hidden" id="jn-photo" value="">
+    <button class="btn btn-o" onclick="saveJournal()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-g" onclick="closeModal('modal-journal')" style="width:100%">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL EQUIPEMENT -->
+<div class="mo" id="modal-equip">
+  <div class="mdl">
+    <div class="mh"></div><div class="mt" id="eq-modal-title">Ajouter un équipement</div>
+    <div class="fd"><label>Nom</label><input type="text" id="eq-name" placeholder="Ex : Red Sea Reefer 300 XL G3"></div>
+    <div class="fd"><label>Détail / description</label><input type="text" id="eq-detail" placeholder="Ex : Aquarium principal 300L"></div>
+    <div class="fd"><label>Prix (€)</label><input type="number" id="eq-price" placeholder="Ex : 1699" step="0.01"></div>
+    <div class="fd"><label>Date d'achat</label><input type="date" id="eq-date"></div>
+    <div class="fd"><label>Garantie (mois)</label><input type="number" id="eq-warranty" placeholder="Ex : 24"></div>
+    <div class="fd"><label>Emoji</label><input type="text" id="eq-emoji" placeholder="⚙️" maxlength="4" style="font-size:20px;text-align:center"></div>
+    <input type="hidden" id="eq-id" value="">
+    <button class="btn btn-o" onclick="saveEquip()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-g" onclick="closeModal('modal-equip')" style="width:100%">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL CREATURE DETAIL -->
+<div class="mo" id="modal-creature"><div class="mdl" id="mcc"></div></div>
+
+<!-- MODAL EDIT MEASURE -->
+<div class="mo" id="modal-edit-measure">
+  <div class="mdl">
+    <div class="mh"></div><div class="mt">Modifier la mesure</div>
+    <div class="fd"><label>Valeur</label><input type="number" id="em-val" step="any" inputmode="decimal"></div>
+    <div class="fd"><label>Commentaire</label><input type="text" id="em-comment"></div>
+    <input type="hidden" id="em-id">
+    <button class="btn btn-o" onclick="saveEditMeasure()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-g" onclick="closeModal('modal-edit-measure')" style="width:100%">Annuler</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const PC = {
+  temp:{label:'Température',unit:'°C',target:25,min:24,max:26,kit:''},
+  sal: {label:'Salinité',unit:'ppt',target:35,min:34,max:36,kit:'Réfractomètre'},
+  ph:  {label:'pH',unit:'',target:8.2,min:8.0,max:8.4,kit:'Kit MCP'},
+  kh:  {label:'KH',unit:'dKH',target:8,min:7,max:9,kit:'Kit MCP + Pro Multi'},
+  no3: {label:'NO₃',unit:'mg/L',target:5,min:1,max:10,kit:'Kit MCP'},
+  no2: {label:'NO₂',unit:'mg/L',target:0,min:0,max:0.1,kit:'Kit MCP'},
+  nh3: {label:'NH₃/NH₄',unit:'mg/L',target:0,min:0,max:0.05,kit:'Kit MCP'},
+  ca:  {label:'Calcium',unit:'mg/L',target:430,min:400,max:450,kit:'Kit Pro Multi'},
+  mg:  {label:'Magnésium',unit:'mg/L',target:1350,min:1250,max:1400,kit:'Kit Pro Multi'},
+  po4: {label:'PO₄',unit:'mg/L',target:0.05,min:0.02,max:0.10,kit:''}
+};
+
+const PHASES = [
+  {days:14, emoji:'🟤', label:'Rodage', color:'rgba(160,120,60,.15)', border:'rgba(160,120,60,.3)',
+   desc:"Film brun sur le sable et les pierres — c'est normal, ne rien faire.",
+   tips:['Observer sans intervenir','Vérifier salinité chaque dimanche',"Ne pas modifier l'écumeur"]},
+  {days:35, emoji:'🟢', label:'Apparition des algues vertes', color:'rgba(0,150,70,.12)', border:'rgba(0,150,70,.3)',
+   desc:'Algues vertes sur les vitres — nettoyer les vitres seulement, ne pas corriger les algues sur les pierres.',
+   tips:["Nettoyer vitres si besoin","Ne pas ajouter d'anti-algues","Observer la microfaune naissante"]},
+  {days:60, emoji:'🔬', label:'Microfaune', color:'rgba(45,142,232,.12)', border:'rgba(45,142,232,.3)',
+   desc:'Apparition de copépodes et microfaune — très bon signe de maturation.',
+   tips:['Compter les petits organismes','Paramètres qui se stabilisent',"Préparer l'introduction du vivant"]},
+  {days:90, emoji:'🐠', label:'Prêt pour le vivant', color:'rgba(0,201,177,.12)', border:'rgba(0,201,177,.3)',
+   desc:'Le bac est stable et mature. Tu peux commencer à introduire les premiers habitants.',
+   tips:['Commencer par les détritivores','Puis les poissons robustes','Puis les premiers coraux faciles']},
+  {days:180, emoji:'🪸', label:'Bac jeune', color:'rgba(90,179,255,.1)', border:'rgba(90,179,255,.25)',
+   desc:'Bac en pleine croissance. Surveiller les paramètres hebdomadairement.',
+   tips:['Tests hebdo KH/Ca/Mg','Changements eau 10% toutes 2 semaines','Ajout progressif de coraux']},
+  {days:99999, emoji:'🌊', label:'Bac mature', color:'rgba(0,201,177,.1)', border:'rgba(0,201,177,.25)',
+   desc:'Bac mature et stable. Tu peux accueillir des espèces plus exigeantes.',
+   tips:['Maintenir la régularité','SPS possibles','Dosing automatique recommandé']}
+];
+
+const DAILY_C = ['Température OK','Pompe de remontée fonctionnelle','Écumeur fonctionnel','ATO fonctionnel','Observer le bac 2 min','Profiter 😄'];
+const SUNDAY_C = ['Salinité (réfractomètre)','NH₃/NH₄ — Kit MCP','NO₂ — Kit MCP','NO₃ — Kit MCP','Journal ATO','Niveau réserve osmosée','Nettoyage vitres si besoin'];
+
+const TIPS_FISH = {
+  'Premnas biaculeatus':{
+    food:['Granulés Hikari Marine A ou New Life Spectrum','Artémia, mysid, cyclops congelés — 2x/jour','Nori (algues) occasionnellement'],
+    observe:['Frottements sur anémone ou substrat = normal','Gonflement ventre = ponte possible','Taches blanches ou mucus = alerte'],
+    care:['Couple stable, ne jamais séparer','10-12h de lumière/jour','Laisser la femelle établir sa hiérarchie'],
+    compat:["Compatible avec la plupart des poissons pacifiques","Attention avec autres clownfish","Territoire autour de l'anémone"]
+  },
+  'Nemateleotris decora':{
+    food:['Copépodes vivants au démarrage','Artémia congelée, cyclops','Granulés fins Roti-Feast ou Reef Roids'],
+    observe:['Fuite dans terrier = stress ou prédateur','Refus de manger = incompatibilité'],
+    care:['Poisson sauteur : couvercle obligatoire !','Courant modéré, coin tranquille','Éviter les poissons agressifs'],
+    compat:['Très pacifique','Peut cohabiter en couple','Éviter les poissons plus imposants agressifs']
+  },
+  'Canthigaster margaritatus':{
+    food:['Algues, invertébrés, crevettes','Granulés variés','Aliments congelés divers'],
+    observe:['Gonflement = stress ou défense','Nage normale et curiosité naturelle'],
+    care:['Attention : mange les invertébrés !','Éviter avec coraux','Bac de 200L minimum'],
+    compat:['Incompatible avec la plupart des invertébrés','Compatible avec poissons robustes','Ne pas mettre avec coraux précieux']
+  }
+};
+const TIPS_DEF = {
+  food:["Alimentation variée adaptée à l'espèce","1-2x/jour en petites portions"],
+  observe:['Comportement alimentaire normal','Respiration non accélérée','Absence de taches ou mucus'],
+  care:['Acclimatation lente 30 min minimum','Observer 48h après introduction'],
+  compat:['Vérifier les compatibilités avant achat','Introduire les poissons paisibles en premier']
+};
+const CORAL_TIPS = {
+  lps:{food:['Mysis, rotifers 2-3x/semaine','Nourrir la nuit quand polypes ouverts'],care:['Lumière modérée 150-250 PAR','Courant modéré pas direct sur polypes','Espace entre LPS (tentacules urticants)'],observe:['Polypes ouverts = bonne santé','Blanchiment = alerte Ca/KH/lumière','Rétraction prolongée = stress'],compat:['Espace entre coraux LPS obligatoire','Attention aux sweeper tentacles']},
+  sps:{food:['Zooplancton fin','Reef Roids dilués'],care:['Lumière forte 200-400 PAR','Fort courant variable','KH/Ca/Mg très stables et dosés'],observe:['Couleur = santé','Décoloration = photostress ou déficit'],compat:['Éloigner des LPS et softs','Besoin de stabilité chimique absolue']},
+  soft:{food:["Phytoplancton, zooplancton dilué"],care:["Lumière faible à modérée","Courant modéré"],observe:["Expansion = bonne santé","Déflation = PO4 élevé ou stress"],compat:["Peut libérer des terpènes — rincer à l'achat","Éloigner des SPS"]},
+  nem:{food:["Morceau de crevette ou poisson 1x/semaine","Directement dans les tentacules"],care:["Lumière forte 200+ PAR","Espace libre : l'anémone se déplace !","Ne jamais forcer le placement"],observe:["Pied bien fixé = stable et satisfaite","Si elle se déplace = cherche meilleures conditions","Blanchiment = urgence eau !"],compat:["Hôte naturel des Premnas biaculeatus","Peut manger de petits poissons"]},
+  autre:{food:["Selon l'espèce"],care:['Vérifier les besoins spécifiques'],observe:['Comportement normal'],compat:['Vérifier compatibilité']}
+};
+
+const DEC_DATA = {
+  fish:[
+    {emoji:"🐠",name:"Clown Maroon Gold Stripe",sci:"Premnas biaculeatus",diff:2,intro:"Semaine 1 — Phase 2",vol:200,tips:"Robuste, excellent débutant. Idéal avec Radianthus malu.",compat:"Éviter avec d'autres clownfish."},
+    {emoji:'🐡',name:'Dartfish Décoré',sci:'Nemateleotris decora',diff:2,intro:'Après stabilisation',vol:100,tips:'Paisible, nage élégante. Couvercle obligatoire.',compat:'Très pacifique.'},
+    {emoji:'🐟',name:'Centropyge bispinosus',sci:'Centropyge bispinosus',diff:2,intro:'Bac mature 3 mois+',vol:150,tips:'Poisson-ange nain coloré. Peut grignoter les coraux mous.',compat:'Attention avec coraux.'},
+    {emoji:'🦈',name:'Ecsenius bicolor',sci:'Ecsenius bicolor',diff:1,intro:'Bac stabilisé',vol:80,tips:'Blenny herbivore, mange les algues. Très facile.',compat:'Excellent avec tous.'}
+  ],
+  coral:[
+    {emoji:'⚪',name:'Zoanthus / Palythoa',sci:'Zoanthus sp.',diff:1,intro:'Semaine 5 Phase 2',vol:100,tips:'Premier corail idéal. Robuste, coloré, croissance rapide.',compat:'Compatible avec tout.'},
+    {emoji:'🌿',name:'Clavularia vert',sci:'Clavularia viridis',diff:1,intro:'Semaine 5 Phase 2',vol:100,tips:'Corail mou très facile. Beau, croissance rapide.',compat:'Éloigner des SPS.'},
+    {emoji:"🔨",name:"Hammer Coral",sci:"Euphyllia ancora",diff:2,intro:"Bac 2 mois+",vol:150,tips:"LPS spectaculaire. Demande de l'espace autour de lui.",compat:"Tentacules urticants !"},
+    {emoji:'🪸',name:'Chalice',sci:'Echinophyllia sp.',diff:3,intro:'Bac stabilisé 3 mois+',vol:200,tips:'Coloration unique. Lumière modérée, courant faible.',compat:'Bon avec LPS.'}
+  ],
+  inv:[
+    {emoji:"🐌",name:"Escargots Turbo",sci:"Turbo sp.",diff:1,intro:"Semaine 3 Phase 2",vol:100,tips:"Excellent nettoyeur d'algues. Indispensable.",compat:"Parfait avec tout."},
+    {emoji:'🦔',name:'Oursin Mespilia',sci:'Mespilia globulus',diff:1,intro:'Semaine 3 Phase 2',vol:100,tips:'Mange les algues, très actif la nuit.',compat:'Éviter avec starfish.'},
+    {emoji:'🦐',name:'Crevette Lysmata',sci:'Lysmata amboinensis',diff:1,intro:'Bac stabilisé',vol:80,tips:'Crevette nettoyeuse. Nettoie les poissons des parasites.',compat:'Éviter avec Canthigaster.'},
+    {emoji:'🌺',name:'Sabelle',sci:'Sabellastarte sp.',diff:2,intro:'Bac mature',vol:150,tips:'Ver tubicole filtreur. Très esthétique mais fragile.',compat:'Éviter les poissons piqueurs.'}
+  ]
+};
+
+// ═══════════════════════════════════════════
+// SUPABASE — connexion, auth & couche de données
+// ═══════════════════════════════════════════
+const SUPABASE_URL = 'https://tqymsohezducxjqtfjwa.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_KXJwNbuk_zBmuacSGQjjhQ_T9HCZnBY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser=null; // sera rempli après connexion : { id, email }
+let measures=[], animals=[], corals=[], journal=[], equipment=[], gallery=[];
+let dailyDone={}, weeklyDone={};
+let dbReady=false, dbError=false;
+
+function showSyncStatus(msg, isError){
+  let el=document.getElementById('sync-banner');
+  if(!el){
+    el=document.createElement('div');
+    el.id='sync-banner';
+    el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;text-align:center;font-size:12px;padding:7px;font-weight:500;transition:opacity .3s';
+    document.body.appendChild(el);
+  }
+  el.style.background=isError?'#ff4d4d':'#00c9b1';
+  el.style.color='#fff';
+  el.textContent=msg;
+  el.style.opacity='1';
+  if(!isError)setTimeout(()=>{el.style.opacity='0'},1800);
+}
+
+// ── AUTHENTIFICATION ──
+async function checkSession(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.user){
+    currentUser={id:session.user.id, email:session.user.email};
+    return true;
+  }
+  return false;
+}
+
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const password=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-error');
+  errEl.textContent='';
+  if(!email||!password){errEl.textContent='Renseigne ton email et ton mot de passe.';return}
+  const btn=document.getElementById('login-btn');
+  btn.disabled=true;btn.textContent='Connexion...';
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  btn.disabled=false;btn.textContent='Se connecter';
+  if(error){
+    errEl.textContent = error.message==='Invalid login credentials' ? 'Email ou mot de passe incorrect.' : error.message;
+    return;
+  }
+  currentUser={id:data.user.id, email:data.user.email};
+  await startApp();
+}
+
+async function doLogout(){
+  if(!confirm('Te déconnecter ?'))return;
+  await sb.auth.signOut();
+  currentUser=null;
+  location.reload();
+}
+
+function showLoginScreen(){
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+function hideLoginScreen(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+}
+
+async function uploadPhoto(file, folder){
+  const ext=file.name.split('.').pop()||'jpg';
+  const path=`${folder}/${currentUser.id}-${Date.now()}-${Math.floor(Math.random()*9999)}.${ext}`;
+  const {error}=await sb.storage.from('reefkeeper-photos').upload(path, file, {cacheControl:'3600', upsert:false});
+  if(error){console.error(error);toast('⚠️ Échec upload photo');return ''}
+  const {data}=sb.storage.from('reefkeeper-photos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function loadAllData(){
+  try{
+    const oid=currentUser.id;
+    const [mR,aR,cR,jR,eR,gR,sR]=await Promise.all([
+      sb.from('measures').select('*').eq('owner_id',oid).order('ts',{ascending:true}),
+      sb.from('animals').select('*').eq('owner_id',oid),
+      sb.from('corals').select('*').eq('owner_id',oid),
+      sb.from('journal_entries').select('*').eq('owner_id',oid).order('entry_date',{ascending:true}),
+      sb.from('equipment').select('*').eq('owner_id',oid),
+      sb.from('gallery_photos').select('*').eq('owner_id',oid),
+      sb.from('app_settings').select('*').eq('owner_id',oid).maybeSingle()
+    ]);
+    if(mR.error) throw mR.error;
+    measures = (mR.data||[]).map(m=>({id:m.id,param:m.param,value:parseFloat(m.value),ts:new Date(m.ts).getTime(),comment:m.comment||''}));
+    animals  = (aR.data||[]).map(a=>({id:a.id,cat:a.cat,status:a.status,name:a.name,sci:a.sci||'',emoji:a.emoji||'🐟',photo:a.photo_url||'',date:a.date||'',notes:a.notes||''}));
+    corals   = (cR.data||[]).map(c=>({id:c.id,status:c.status,name:c.name,type:c.type,emoji:c.emoji||'🪸',photo:c.photo_url||'',location:c.location||'',notes:c.notes||''}));
+    journal  = (jR.data||[]).map(j=>({id:j.id,date:j.entry_date,title:j.title,cat:j.category,note:j.note||'',photo:j.photo_url||''}));
+    equipment= (eR.data||[]).map(e=>({id:e.id,emoji:e.emoji||'⚙️',name:e.name,detail:e.detail||'',price:parseFloat(e.price)||0,date:e.purchase_date||'',warranty:e.warranty_months||0}));
+    gallery  = (gR.data||[]).map(p=>({id:p.id,src:p.photo_url,ts:new Date(p.taken_at).getTime(),name:p.caption||''}));
+    if(sR.data){ dailyDone=sR.data.daily_done||{}; weeklyDone=sR.data.weekly_done||{}; }
+    dbReady=true;
+  }catch(err){
+    console.error('Supabase load error - message:', err?.message);
+    console.error('Supabase load error - details:', err?.details);
+    console.error('Supabase load error - hint:', err?.hint);
+    console.error('Supabase load error - code:', err?.code);
+    console.error('Supabase load error - full:', JSON.stringify(err));
+    dbError=true;
+    const msg = err?.message || JSON.stringify(err) || 'erreur inconnue';
+    showSyncStatus('⚠️ Erreur Supabase: ' + msg, true);
+  }
+}
+
+async function saveSettings(){
+  try{
+    await sb.from('app_settings').upsert({owner_id:currentUser.id, daily_done:dailyDone, weekly_done:weeklyDone, updated_at:new Date().toISOString()});
+  }catch(err){console.error(err)}
+}
+
+let histFilter=7, histView='chart', calcType='kh', histChart=null, currentPage='aquarium';
+
+// ═══════════════════════════════════════════
+// BUBBLES
+// ═══════════════════════════════════════════
+(function(){const c=document.getElementById('bbl');for(let i=0;i<6;i++){const b=document.createElement('div');b.className='bb';const sz=15+Math.random()*50;b.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;animation-duration:${15+Math.random()*20}s;animation-delay:-${Math.random()*25}s`;c.appendChild(b);}})();
+
+// ═══════════════════════════════════════════
+// WEATHER
+// ═══════════════════════════════════════════
+async function fetchWeather(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=48.27&longitude=2.69&current=temperature_2m,weathercode&timezone=Europe/Paris');
+    const d=await r.json();
+    const codes={0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',51:'🌦',61:'🌧',63:'🌧',71:'❄️',80:'🌦',95:'⛈'};
+    const wc=d.current.weathercode;
+    document.getElementById('hw-t').textContent=Math.round(d.current.temperature_2m)+'°';
+    document.getElementById('hw-c').textContent=(codes[wc]||codes[Math.floor(wc/10)*10]||'🌡')+' Nemours';
+  }catch(e){document.getElementById('hw-c').textContent='Nemours'}
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function gSt(p,v){const c=PC[p];if(!c)return'ok';if(v<c.min||v>c.max)return'danger';const m=(c.max-c.min)*.15;if(v<c.min+m||v>c.max-m)return'warn';return'ok'}
+function gPos(p,v){const c=PC[p];if(!c)return 50;return Math.max(2,Math.min(98,(v-c.min)/(c.max-c.min)*100))}
+function fv(p,v){if(p==='po4'||p==='no2'||p==='nh3')return parseFloat(v.toFixed(3));if(p==='mg'||p==='ca')return Math.round(v);return parseFloat(v.toFixed(2))}
+function getLatest(){const l={};[...measures].sort((a,b)=>a.ts-b.ts).forEach(m=>l[m.param]=m);return l;}
+function daysFromStart(){return Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000)}
+function getPhase(){const d=daysFromStart();return PHASES.find(p=>d<=p.days)||PHASES[PHASES.length-1]}
+function fdate(ts,opts){return new Date(ts).toLocaleDateString('fr-FR',opts||{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+function fdateS(ts){return new Date(ts).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+function uid(){return Date.now()+Math.floor(Math.random()*1000)}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+const PT={aquarium:'Mon Aquarium',history:'Historique',population:'Population',journal:'Journal',decouvertes:'Découvertes',calc:'Calculateur',equipment:'Équipement',gallery:'Galerie',settings:'Réglages'};
+const PS={aquarium:'Reefer 300 XL G3 · Depuis le 8 juin 2026',history:'Graphiques & mesures',population:'Poissons & invertébrés',journal:'Carnet de bord du bac',decouvertes:'Recommandations personnalisées',calc:'Dosages & corrections',equipment:'Matériel & garanties',gallery:'Timeline du bac',settings:'Préférences & sauvegarde'};
+const renders={aquarium:renderAquarium,history:renderHistory,population:renderPop,journal:renderJournal,decouvertes:renderDec,calc:renderCalcContent,equipment:renderEquipment,gallery:renderGallery,settings:renderSettings};
+
+function nav(id){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-'+id).classList.add('active');
+  document.querySelectorAll('.tbi').forEach(t=>t.classList.remove('active'));
+  const tb=document.getElementById('tb-'+id);if(tb)tb.classList.add('active');
+  document.getElementById('htitle').textContent=PT[id]||id;
+  document.getElementById('hsub').textContent=PS[id]||'';
+  currentPage=id;
+  closeMenu();
+  if(renders[id])renders[id]();
+}
+
+function openMenu(){document.getElementById('sm').classList.add('open');document.getElementById('ov').classList.add('open')}
+function closeMenu(){document.getElementById('sm').classList.remove('open');document.getElementById('ov').classList.remove('open')}
+function openModal(id){const e=document.getElementById(id);e.classList.add('open');e.onclick=ev=>{if(ev.target===e)closeModal(id)}}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{if(t.parentNode)document.body.removeChild(t)},2400)}
+
+// ═══════════════════════════════════════════
+// MENU TESTS
+// ═══════════════════════════════════════════
+function renderMenuTests(){
+  const l=getLatest();
+  const dotC={ok:'background:var(--teal)',warn:'background:var(--amber)',danger:'background:var(--red)',nd:'background:var(--t4)'};
+  function ti(params){return params.map(p=>{
+    const m=l[p];const v=m?fv(p,m.value):null;
+    const s=v!==null?gSt(p,v):'nd';
+    return`<div class="ti" onclick="closeMenu();openModal('modal-mesure');setTimeout(()=>{document.getElementById('ap').value='${p}';document.getElementById('av').focus()},100)">
+      <div class="tdot" style="${dotC[s]}"></div>
+      <div class="tname">${PC[p].label}</div>
+      <div style="text-align:right"><div class="tval ${s}">${v!==null?v+' '+PC[p].unit:'—'}</div><div class="tdate">${m?fdate(m.ts):'Non mesuré'}</div></div>
+    </div>`;
+  }).join('')}
+  document.getElementById('menu-mcp').innerHTML=ti(['ph','kh','no3','no2','nh3']);
+  document.getElementById('menu-pro').innerHTML=ti(['ca','kh','mg']);
+}
+
+// ═══════════════════════════════════════════
+// MON AQUARIUM
+// ═══════════════════════════════════════════
+function renderAquarium(){
+  const l=getLatest();
+  const days=daysFromStart();
+  const phase=getPhase();
+
+  // Phase card
+  document.getElementById('phase-card').innerHTML=`
+    <div class="phase-card" style="background:${phase.color};border-color:${phase.border};margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
+        <span style="font-size:22px">${phase.emoji}</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${phase.label}</div>
+          <div style="font-size:11px;color:var(--t3)">Jour ${days} depuis la mise en eau</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:8px">${phase.desc}</div>
+      ${phase.tips.map(t=>`<div style="font-size:12px;color:var(--t3);padding:2px 0">→ ${t}</div>`).join('')}
+    </div>`;
+
+  // Alerts
+  let ah='';
+  const dangers=Object.entries(l).filter(([p,m])=>gSt(p,m.value)==='danger');
+  const warns=Object.entries(l).filter(([p,m])=>gSt(p,m.value)==='warn');
+  if(dangers.length)ah+=`<div class="al a-danger"><span class="ai">🚨</span><div><strong>${dangers.length} hors plage :</strong> ${dangers.map(([p])=>PC[p].label).join(', ')}</div></div>`;
+  if(warns.length)ah+=`<div class="al a-warn"><span class="ai">⚠️</span><div><strong>${warns.length} à surveiller :</strong> ${warns.map(([p])=>PC[p].label).join(', ')}</div></div>`;
+  document.getElementById('main-alerts').innerHTML=ah;
+
+  // Bilan
+  const tank=animals.filter(a=>a.status==='tank');
+  document.getElementById('bilan-top').innerHTML=`
+    <div class="bx"><div class="bv t">${days}j</div><div class="bl">En marche</div></div>
+    <div class="bx"><div class="bv b">${tank.length}</div><div class="bl">Animaux</div></div>
+    <div class="bx"><div class="bv a">${measures.length}</div><div class="bl">Relevés</div></div>`;
+
+  // Derniers relevés
+  const allP=['temp','sal','ph','kh','no3','no2','nh3','ca','mg','po4'];
+  document.getElementById('last-measures').innerHTML=allP.map(p=>{
+    const m=l[p];const v=m?fv(p,m.value):null;
+    const s=v!==null?gSt(p,v):'nd';
+    return`<div class="mr" onclick="openModal('modal-mesure');setTimeout(()=>document.getElementById('ap').value='${p}',50)">
+      <div><div class="mn">${PC[p].label}</div>${PC[p].kit?`<div class="mk">${PC[p].kit}</div>`:''}</div>
+      <div style="text-align:right">
+        <div class="mv ${s}">${v!==null?v+' '+PC[p].unit:'Non mesuré'}</div>
+        <div class="md">${m?fdate(m.ts):'—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Daily checks
+  const today=new Date().toDateString();
+  if(!dailyDone[today])dailyDone[today]={};
+  document.getElementById('daily-checks').innerHTML=
+    `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>`+
+    DAILY_C.map((c,i)=>`<div class="wc"><div class="wck ${dailyDone[today][i]?'dn':''}" onclick="togDC(${i},'${today}')">${dailyDone[today][i]?'✓':''}</div><span class="wcl ${dailyDone[today][i]?'dn':''}">${c}</span></div>`).join('');
+
+  renderMenuTests();
+}
+function togDC(i,d){dailyDone[d][i]=!dailyDone[d][i];saveSettings();renderAquarium()}
+
+// ═══════════════════════════════════════════
+// MESURE
+// ═══════════════════════════════════════════
+async function addMeasure(){
+  const p=document.getElementById('ap').value;
+  const v=parseFloat(document.getElementById('av').value);
+  if(isNaN(v)){toast('⚠️ Valeur numérique requise');return}
+  const comment=document.getElementById('ac').value.trim();
+  const ts=Date.now();
+  document.getElementById('av').value='';document.getElementById('ac').value='';
+  closeModal('modal-mesure');
+  const {data,error}=await sb.from('measures').insert({owner_id:currentUser.id,param:p,value:v,comment,ts:new Date(ts).toISOString()}).select().single();
+  if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+  measures.push({id:data.id,param:p,value:v,ts,comment});
+  renderAquarium();toast('✓ Mesure enregistrée');
+}
+
+// ═══════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════
+function setHF(d,el){histFilter=d;document.querySelectorAll('#hfp .pl').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderHistory()}
+function setHV(v,el){histView=v;document.querySelectorAll('#pg-history .sb').forEach(b=>b.classList.remove('active'));el.classList.add('active');document.getElementById('hcw').style.display=v==='chart'?'':'none';document.getElementById('htw').style.display=v==='table'?'':'none';renderHistory()}
+function renderHistory(){
+  const param=document.getElementById('hp').value;
+  const cutoff=Date.now()-histFilter*86400000;
+  const data=measures.filter(m=>m.param===param&&m.ts>=cutoff).sort((a,b)=>a.ts-b.ts);
+  const cfg=PC[param];
+  if(histView==='chart'){
+    const ctx=document.getElementById('hch').getContext('2d');
+    if(histChart)histChart.destroy();
+    histChart=new Chart(ctx,{type:'line',data:{
+      labels:data.map(d=>new Date(d.ts).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})),
+      datasets:[
+        {label:cfg.label,data:data.map(d=>d.value),borderColor:'#00c9b1',backgroundColor:'rgba(0,201,177,.07)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#00c9b1',tension:.35,fill:true},
+        {label:'Min',data:data.map(()=>cfg.min),borderColor:'rgba(255,77,77,.4)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false},
+        {label:'Max',data:data.map(()=>cfg.max),borderColor:'rgba(255,77,77,.4)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false},
+        {label:'Cible',data:data.map(()=>cfg.target),borderColor:'rgba(0,201,177,.3)',borderWidth:1,borderDash:[6,3],pointRadius:0,fill:false}
+      ]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#3a6a8a',font:{size:11}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#3a6a8a',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'}}}}});
+  } else {
+    const sl={ok:'OK',warn:'Vigilance',danger:'Hors plage'};
+    const sc={ok:'var(--teal)',warn:'var(--amber)',danger:'var(--red)'};
+    document.getElementById('htb').innerHTML=[...data].reverse().map(m=>{
+      const s=gSt(m.param,m.value);
+      return`<tr style="border-bottom:.5px solid rgba(45,142,232,.06)">
+        <td style="padding:8px 6px;color:var(--t3)">${new Date(m.ts).toLocaleDateString('fr-FR')}</td>
+        <td style="padding:8px 6px;font-weight:600">${fv(m.param,m.value)} ${cfg.unit}</td>
+        <td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:20px;font-size:11px;background:${s==='ok'?'var(--td)':s==='warn'?'var(--ad)':'var(--rd)'};color:${sc[s]}">${sl[s]}</span></td>
+        <td style="padding:8px 4px">
+          <span onclick="editMeasure('${m.id}')" style="cursor:pointer;color:var(--o3);font-size:12px;margin-right:8px">✏️</span>
+          <span onclick="delMeasure('${m.id}')" style="cursor:pointer;color:var(--red);font-size:12px">🗑</span>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+}
+function editMeasure(id){
+  const m=measures.find(x=>x.id===id);if(!m)return;
+  document.getElementById('em-id').value=id;
+  document.getElementById('em-val').value=m.value;
+  document.getElementById('em-comment').value=m.comment||'';
+  openModal('modal-edit-measure');
+}
+async function saveEditMeasure(){
+  const id=document.getElementById('em-id').value;
+  const v=parseFloat(document.getElementById('em-val').value);
+  if(isNaN(v)){toast('⚠️ Valeur invalide');return}
+  const comment=document.getElementById('em-comment').value.trim();
+  const m=measures.find(x=>x.id==id);if(!m)return;
+  const {error}=await sb.from('measures').update({value:v,comment}).eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la modification');return}
+  m.value=v;m.comment=comment;
+  closeModal('modal-edit-measure');renderHistory();toast('✓ Mesure modifiée');
+}
+async function delMeasure(id){
+  if(!confirm('Supprimer cette mesure ?'))return;
+  const {error}=await sb.from('measures').delete().eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  measures=measures.filter(m=>m.id!=id);renderHistory();toast('Mesure supprimée');
+}
+
+// ═══════════════════════════════════════════
+// POPULATION
+// ═══════════════════════════════════════════
+function renderPop(){
+  const tank=animals.filter(a=>a.status==='tank');
+  const plan=animals.filter(a=>a.status==='planned');
+  const dead=animals.filter(a=>a.status==='dead');
+  document.getElementById('cf').textContent=tank.filter(a=>a.cat==='fish').length;
+  document.getElementById('ci').textContent=tank.filter(a=>a.cat==='inv').length;
+  document.getElementById('cp').textContent=plan.length;
+  const aH=arr=>arr.length?arr.map(a=>`
+    <div class="cc" onclick="openCreature('${a.id}')">
+      <div class="ca ${a.status==='tank'?'it':a.status==='dead'?'pl':'pl'}">${a.photo?`<img src="${a.photo}">`:(a.emoji||'🐟')}</div>
+      <div class="ci">
+        <div class="cn">${a.name}</div>
+        <div class="cs">${a.sci}</div>
+        ${a.date?`<div class="cm">Introduit le ${new Date(a.date+'T00:00:00').toLocaleDateString('fr-FR')}</div>`:''}
+        <span class="cbadge ${a.status==='tank'?'b-it':a.status==='dead'?'b-de':'b-pl'}">${a.status==='tank'?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
+      </div>
+      <div class="cc-ch">›</div>
+    </div>`).join(''):
+    '<div class="emp"><div class="emp-i">—</div><div class="emp-t">Aucun animal ici.</div></div>';
+  document.getElementById('fish-tank').innerHTML=aH(tank);
+  document.getElementById('fish-plan').innerHTML=aH([...plan,...dead]);
+  renderCoraux();
+}
+
+function openCreature(id){
+  const a=animals.find(x=>x.id===id);if(!a)return;
+  const tips=TIPS_FISH[a.sci]||TIPS_DEF;
+  const inTank=a.status==='tank';
+  const statusBtns = inTank
+    ? `<button class="btn btn-g btn-sm" style="margin-right:6px" onclick="moveAnimal('${id}','planned');closeModal('modal-creature')">← Retirer du bac</button>
+       <button class="btn btn-r btn-sm" onclick="moveAnimal('${id}','dead');closeModal('modal-creature')">💀 Décédé</button>`
+    : a.status==='dead' ? `<button class="btn btn-g btn-sm" onclick="moveAnimal('${id}','planned');closeModal('modal-creature')">Remettre en liste</button>`
+    : `<button class="btn btn-o btn-sm" onclick="moveAnimal('${id}','tank');closeModal('modal-creature')">✅ Ajouter au bac</button>`;
+  document.getElementById('mcc').innerHTML=`
+    <div class="mh"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,var(--bg2),var(--bg3));display:flex;align-items:center;justify-content:center;font-size:28px;border:.5px solid rgba(0,201,177,.3);overflow:hidden;flex-shrink:0">
+        ${a.photo?`<img src="${a.photo}" style="width:100%;height:100%;object-fit:cover">`:(a.emoji||'🐟')}
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:700">${a.name}</div>
+        <div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:2px">${a.sci}</div>
+        <span class="cbadge ${inTank?'b-it':a.status==='dead'?'b-de':'b-pl'}" style="margin-top:4px">${inTank?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      ${statusBtns}
+      <button class="btn btn-g btn-sm" onclick="editAnimal('${id}')">✏️ Modifier</button>
+      <button class="btn btn-r btn-sm" onclick="if(confirm('Supprimer ?')){delAnimal('${id}');closeModal('modal-creature')}">🗑 Supprimer</button>
+    </div>
+    ${inTank?`
+    <div class="ulk"><span style="font-size:20px">🔓</span><div class="ulk-t"><strong>Fiches débloquées !</strong> Animal présent dans ton bac.</div></div>
+    <div class="tip"><div class="tip-h">🍽 Alimentation</div>${tips.food.map(t=>`<div class="tip-li">${t}</div>`).join('')}</div>
+    <div class="tip"><div class="tip-h">👁 À observer</div>${tips.observe.map(t=>`<div class="tip-li">${t}</div>`).join('')}</div>
+    <div class="tip"><div class="tip-h">💡 Entretien</div>${tips.care.map(t=>`<div class="tip-li">${t}</div>`).join('')}</div>
+    <div class="tip"><div class="tip-h">🤝 Compatibilités</div>${tips.compat.map(t=>`<div class="tip-li">${t}</div>`).join('')}</div>
+    `:`
+    <div class="al a-warn"><span class="ai">🔒</span><div>Ajoute cet animal au bac pour débloquer sa fiche complète.</div></div>
+    <div class="tip" style="opacity:.4"><div class="tip-h">💡 Aperçu</div><div class="tip-li">${tips.care[0]}</div><div class="tip-li" style="color:var(--t4)">… fiche complète après introduction</div></div>
+    `}
+    ${a.notes?`<div class="gls" style="margin-top:10px"><div style="font-size:11px;color:var(--t3);margin-bottom:3px">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5">${a.notes}</div></div>`:''}
+    <button class="btn btn-g" style="width:100%;margin-top:12px" onclick="closeModal('modal-creature')">Fermer</button>`;
+  openModal('modal-creature');
+}
+async function moveAnimal(id,status){
+  const a=animals.find(x=>x.id===id);if(!a)return;
+  const newDate = (status==='tank'&&!a.date) ? new Date().toISOString().slice(0,10) : a.date;
+  const {error}=await sb.from('animals').update({status,date:newDate||null}).eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la mise à jour');return}
+  a.status=status;a.date=newDate;
+  renderPop();
+  const labels={tank:'✅ Animal ajouté au bac !',planned:'Animal remis en liste.',dead:'💀 Décès enregistré.'};
+  toast(labels[status]||'Mis à jour');
+}
+function editAnimal(id){
+  const a=animals.find(x=>x.id===id);if(!a)return;
+  document.getElementById('an-modal-title').textContent="Modifier l'animal";
+  document.getElementById('an-id').value=id;
+  document.getElementById('an-cat').value=a.cat;
+  document.getElementById('an-status').value=a.status;
+  document.getElementById('an-name').value=a.name;
+  document.getElementById('an-sci').value=a.sci||'';
+  document.getElementById('an-emoji').value=a.emoji||'';
+  document.getElementById('an-date').value=a.date||'';
+  document.getElementById('an-notes').value=a.notes||'';
+  document.getElementById('an-photo').value=a.photo||'';
+  document.getElementById('an-photo-preview').innerHTML=a.photo?`<img src="${a.photo}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`:'';
+  closeModal('modal-creature');openModal('modal-animal');
+}
+async function delAnimal(id){
+  const {error}=await sb.from('animals').delete().eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  animals=animals.filter(a=>a.id!==id);renderPop();toast('Animal supprimé');
+}
+let pendingAnPhoto=null;
+function previewAnimalPhoto(inp){
+  if(!inp.files[0])return;
+  pendingAnPhoto=inp.files[0];
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById('an-photo-preview').innerHTML=`<img src="${e.target.result}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`};
+  r.readAsDataURL(inp.files[0]);
+}
+async function saveAnimal(){
+  const name=document.getElementById('an-name').value.trim();if(!name){toast('⚠️ Donne un nom');return}
+  const id=document.getElementById('an-id').value;
+  let photoUrl=document.getElementById('an-photo').value;
+  if(pendingAnPhoto){
+    toast('📤 Envoi de la photo...');
+    photoUrl=await uploadPhoto(pendingAnPhoto,'animals');
+  }
+  const data={cat:document.getElementById('an-cat').value,status:document.getElementById('an-status').value,name,sci:document.getElementById('an-sci').value.trim(),emoji:document.getElementById('an-emoji').value||'🐟',date:document.getElementById('an-date').value||null,notes:document.getElementById('an-notes').value.trim(),photo_url:photoUrl};
+  if(id){
+    const {error}=await sb.from('animals').update(data).eq('id',id);
+    if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+    const a=animals.find(x=>x.id==id);if(a)Object.assign(a,{...data,photo:photoUrl});
+  }else{
+    const {data:inserted,error}=await sb.from('animals').insert({owner_id:currentUser.id,...data}).select().single();
+    if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+    animals.push({id:inserted.id,cat:data.cat,status:data.status,name,sci:data.sci,emoji:data.emoji,photo:photoUrl,date:data.date||'',notes:data.notes});
+  }
+  pendingAnPhoto=null;
+  closeModal('modal-animal');
+  ['an-name','an-sci','an-emoji','an-notes','an-photo'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('an-id').value='';
+  document.getElementById('an-photo-preview').innerHTML='';
+  document.getElementById('an-modal-title').textContent='Ajouter un animal';
+  renderPop();toast('✓ Enregistré');
+}
+
+// ═══════════════════════════════════════════
+// CORAUX (dans Population — tab dédié supprimé pour simplifier)
+// On les intègre dans Population
+// ═══════════════════════════════════════════
+function openCoral(id){
+  const c=corals.find(x=>x.id===id);if(!c)return;
+  const tips=CORAL_TIPS[c.type]||CORAL_TIPS.autre;
+  const inTank=c.status==='tank';
+  const tl={lps:'LPS',sps:'SPS',soft:'Corail mou',nem:'Anémone',autre:'Autre'};
+  document.getElementById('mcc').innerHTML=`
+    <div class="mh"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,#081e3a,#102a55);display:flex;align-items:center;justify-content:center;font-size:28px;border:.5px solid rgba(0,201,177,.3);overflow:hidden;flex-shrink:0">
+        ${c.photo?`<img src="${c.photo}" style="width:100%;height:100%;object-fit:cover">`:(c.emoji||'🪸')}
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:700">${c.name}</div>
+        <div style="font-size:12px;color:var(--teal);font-weight:600;margin-top:2px">${tl[c.type]||c.type}</div>
+        <span class="cbadge ${inTank?'b-it':'b-pl'}" style="margin-top:4px">${inTank?'✅ Dans le bac':'⏳ Prévu'}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      ${inTank
+        ?`<button class="btn btn-g btn-sm" onclick="moveCoral('${id}','planned');closeModal('modal-creature')">← Retirer</button>`
+        :`<button class="btn btn-o btn-sm" onclick="moveCoral('${id}','tank');closeModal('modal-creature')">✅ Ajouter au bac</button>`}
+      <button class="btn btn-g btn-sm" onclick="editCoral('${id}')">✏️ Modifier</button>
+      <button class="btn btn-r btn-sm" onclick="if(confirm('Supprimer ?')){delCoral('${id}');closeModal('modal-creature')}">🗑</button>
+    </div>
+    ${inTank?`
+    <div class="ulk"><span style="font-size:20px">🔓</span><div class="ulk-t"><strong>Fiche débloquée !</strong> Corail dans ton bac.</div></div>
+    <div class="tip"><div class="tip-h">🍽 Alimentation</div>${tips.food.map(t=>`<div class="tip-li">${t}</div>`).join('')}</div>
+    <div class="tip"><div class="tip-h">💡 Entretien</div>${tips.care.map(t=>`<div class="tip-li">${t}</div>`).join('')}</div>
+    <div class="tip"><div class="tip-h">👁 À observer</div>${tips.observe.map(t=>`<div class="tip-li">${t}</div>`).join('')}</div>
+    <div class="tip"><div class="tip-h">🤝 Compatibilités</div>${tips.compat.map(t=>`<div class="tip-li">${t}</div>`).join('')}</div>
+    `:`
+    <div class="al a-warn"><span class="ai">🔒</span><div>Ajoute ce corail au bac pour débloquer sa fiche.</div></div>
+    <div class="tip" style="opacity:.4"><div class="tip-h">💡 Aperçu</div><div class="tip-li">${tips.care[0]}</div><div class="tip-li" style="color:var(--t4)">… fiche complète après introduction</div></div>
+    `}
+    ${c.location?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">📍 Emplacement</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${c.location}</div></div>`:''}
+    ${c.notes?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5;margin-top:2px">${c.notes}</div></div>`:''}
+    <button class="btn btn-g" style="width:100%;margin-top:12px" onclick="closeModal('modal-creature')">Fermer</button>`;
+  openModal('modal-creature');
+}
+async function moveCoral(id,status){
+  const c=corals.find(x=>x.id===id);if(!c)return;
+  const {error}=await sb.from('corals').update({status}).eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la mise à jour');return}
+  c.status=status;renderCoraux();toast(status==='tank'?'✅ Corail dans le bac !':'Retiré du bac');
+}
+function editCoral(id){
+  const c=corals.find(x=>x.id===id);if(!c)return;
+  document.getElementById('co-modal-title').textContent='Modifier le corail';
+  document.getElementById('co-id').value=id;
+  document.getElementById('co-status').value=c.status;
+  document.getElementById('co-name').value=c.name;
+  document.getElementById('co-type').value=c.type;
+  document.getElementById('co-emoji').value=c.emoji||'';
+  document.getElementById('co-location').value=c.location||'';
+  document.getElementById('co-notes').value=c.notes||'';
+  document.getElementById('co-photo').value=c.photo||'';
+  document.getElementById('co-photo-preview').innerHTML=c.photo?`<img src="${c.photo}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`:'';
+  closeModal('modal-creature');openModal('modal-coral');
+}
+async function delCoral(id){
+  const {error}=await sb.from('corals').delete().eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  corals=corals.filter(c=>c.id!==id);renderCoraux();toast('Corail supprimé');
+}
+let pendingCoPhoto=null;
+function previewCoralPhoto(inp){
+  if(!inp.files[0])return;
+  pendingCoPhoto=inp.files[0];
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById('co-photo-preview').innerHTML=`<img src="${e.target.result}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`};
+  r.readAsDataURL(inp.files[0]);
+}
+async function saveCoral(){
+  const name=document.getElementById('co-name').value.trim();if(!name){toast('⚠️ Donne un nom');return}
+  const id=document.getElementById('co-id').value;
+  let photoUrl=document.getElementById('co-photo').value;
+  if(pendingCoPhoto){
+    toast('📤 Envoi de la photo...');
+    photoUrl=await uploadPhoto(pendingCoPhoto,'corals');
+  }
+  const data={status:document.getElementById('co-status').value,name,type:document.getElementById('co-type').value,emoji:document.getElementById('co-emoji').value||'🪸',location:document.getElementById('co-location').value.trim(),notes:document.getElementById('co-notes').value.trim(),photo_url:photoUrl};
+  if(id){
+    const {error}=await sb.from('corals').update(data).eq('id',id);
+    if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+    const c=corals.find(x=>x.id==id);if(c)Object.assign(c,{...data,photo:photoUrl});
+  }else{
+    const {data:inserted,error}=await sb.from('corals').insert({owner_id:currentUser.id,...data}).select().single();
+    if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+    corals.push({id:inserted.id,status:data.status,name,type:data.type,emoji:data.emoji,photo:photoUrl,location:data.location,notes:data.notes});
+  }
+  pendingCoPhoto=null;
+  closeModal('modal-coral');
+  ['co-name','co-emoji','co-location','co-notes','co-photo'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('co-id').value='';
+  document.getElementById('co-photo-preview').innerHTML='';
+  document.getElementById('co-modal-title').textContent='Ajouter un corail';
+  renderCoraux();toast('✓ Corail enregistré');
+}
+
+// Intégrer coraux dans Population — séction supplémentaire
+function renderCoraux(){
+  const el=document.getElementById('coral-section');if(!el)return;
+  const tank=corals.filter(c=>c.status==='tank');
+  const plan=corals.filter(c=>c.status==='planned');
+  const tl={lps:'LPS',sps:'SPS',soft:'Mou',nem:'Anémone',autre:'Autre'};
+  const cH=arr=>arr.length?arr.map(c=>'<div class="cc" onclick="openCoral(\'"+c.id+"\')">'+'<div class="ca '+(c.status==='tank'?'it':'pl')+'">'+(c.photo?'<img src="'+c.photo+'">':(c.emoji||'🪸'))+'</div>'+'<div class="ci"><div class="cn">'+c.name+'</div><div class="cs">'+(tl[c.type]||c.type)+(c.location?' · '+c.location:'')+'</div>'+'<span class="cbadge '+(c.status==='tank'?'b-it':'b-pl')+'">'+(c.status==='tank'?'✅ Dans le bac':'⏳ Prévu')+'</span></div><div class="cc-ch">›</div></div>').join(''):
+    '<div class="emp" style="padding:14px 0"><div class="emp-t">Aucun corail.</div></div>';
+  el.innerHTML=cH([...tank,...plan]);
+}
+
+// ═══════════════════════════════════════════
+// JOURNAL
+// ═══════════════════════════════════════════
+function renderJournal(){
+  const q=(document.getElementById('j-search')?.value||'').toLowerCase();
+  const el=document.getElementById('journal-list');
+  const filtered=[...journal].reverse().filter(j=>!q||(j.title+j.note).toLowerCase().includes(q));
+  if(!filtered.length){el.innerHTML='<div class="emp"><div class="emp-i">📝</div><div class="emp-t">Aucune entrée trouvée.</div></div>';return}
+  const dc={eau:'t',corail:'t',poisson:'',maintenance:'',algue:'a',alerte:'r',observation:'',autre:''};
+  el.innerHTML=filtered.map(j=>`
+    <div class="je">
+      <div style="display:flex;gap:9px;align-items:flex-start">
+        <div class="je-dot ${dc[j.cat]||''}"></div>
+        <div style="flex:1">
+          <div class="je-dt">${fdateS(j.date+'T00:00:00')}</div>
+          <div class="je-ti">${j.title}</div>
+          <div class="je-nt">${j.note}</div>
+          ${j.photo?`<img src="${j.photo}" style="width:100%;border-radius:8px;margin-top:7px;max-height:160px;object-fit:cover">`:''}
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+            <span class="je-tg">${j.cat}</span>
+            <span onclick="delJournal('${j.id}')" style="color:var(--t4);font-size:12px;cursor:pointer">🗑 Supprimer</span>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+let pendingJnPhoto=null;
+function previewJournalPhoto(inp){
+  if(!inp.files[0])return;
+  pendingJnPhoto=inp.files[0];
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById('jn-photo-preview').innerHTML=`<img src="${e.target.result}" style="width:100%;border-radius:8px;max-height:120px;object-fit:cover">`};
+  r.readAsDataURL(inp.files[0]);
+}
+async function saveJournal(){
+  const title=document.getElementById('jn-title').value.trim();if(!title){toast('⚠️ Ajoute un titre');return}
+  let photoUrl='';
+  if(pendingJnPhoto){
+    toast('📤 Envoi de la photo...');
+    photoUrl=await uploadPhoto(pendingJnPhoto,'journal');
+  }
+  const entryDate=new Date().toISOString().slice(0,10);
+  const cat=document.getElementById('jn-cat').value;
+  const note=document.getElementById('jn-note').value.trim();
+  const {data:inserted,error}=await sb.from('journal_entries').insert({owner_id:currentUser.id,entry_date:entryDate,title,category:cat,note,photo_url:photoUrl}).select().single();
+  if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+  journal.push({id:inserted.id,date:entryDate,title,cat,note,photo:photoUrl});
+  pendingJnPhoto=null;
+  closeModal('modal-journal');
+  ['jn-title','jn-note'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('jn-photo-preview').innerHTML='';
+  renderJournal();toast('✓ Entrée enregistrée');
+}
+async function delJournal(id){
+  if(!confirm('Supprimer cette entrée ?'))return;
+  const {error}=await sb.from('journal_entries').delete().eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  journal=journal.filter(j=>j.id!==id);renderJournal();toast('Entrée supprimée');
+}
+
+// ═══════════════════════════════════════════
+// DÉCOUVERTES
+// ═══════════════════════════════════════════
+function renderDec(){
+  const days=daysFromStart();
+  const diff2str={1:'⭐ Facile',2:'⭐⭐ Intermédiaire',3:'⭐⭐⭐ Avancé',4:'⭐⭐⭐⭐ Expert'};
+  const diff2cls={1:'diff-1',2:'diff-2',3:'diff-3',4:'diff-4'};
+  function dcH(arr){return arr.map(d=>`
+    <div class="dc">
+      <div class="dc-top">
+        <div class="dc-ico">${d.emoji}</div>
+        <div>
+          <div class="dc-n">${d.name}</div>
+          <div class="dc-s">${d.sci}</div>
+          <span class="diff ${diff2cls[d.diff]}">${diff2str[d.diff]}</span>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:6px">${d.tips}</div>
+      <div style="display:flex;gap:12px;font-size:11px;color:var(--t3)">
+        <span>📅 ${d.intro}</span>
+        <span>🪣 ${d.vol}L min</span>
+      </div>
+      ${d.compat?`<div style="font-size:11px;color:var(--t4);margin-top:4px">⚠️ ${d.compat}</div>`:''}
+    </div>`).join('')}
+  document.getElementById('dec-fish').innerHTML=dcH(DEC_DATA.fish);
+  document.getElementById('dec-coral').innerHTML=dcH(DEC_DATA.coral);
+  document.getElementById('dec-inv').innerHTML=dcH(DEC_DATA.inv);
+}
+
+// ═══════════════════════════════════════════
+// CALCULATEUR
+// ═══════════════════════════════════════════
+function setCalc(t,el){calcType=t;document.querySelectorAll('#cseg .sb').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderCalcContent()}
+function renderCalcContent(){
+  const el=document.getElementById('calc-content');
+  if(calcType==='water'){
+    el.innerHTML=`<div class="fd"><label>Volume net (L)</label><input type="number" id="cv" value="300" inputmode="decimal"></div><div class="fd"><label>Pourcentage à changer (%)</label><input type="number" id="cpct" value="10" inputmode="decimal"></div><button class="btn btn-o" onclick="calcWater()">Calculer</button><div id="cr2"></div>`;return;
+  }
+  const labels={kh:'KH (dKH)',ca:'Calcium (mg/L)',mg:'Magnésium (mg/L)'};
+  el.innerHTML=`<div class="fd"><label>Volume net (L)</label><input type="number" id="cv" value="300" inputmode="decimal"></div><div class="fd"><label>Valeur actuelle — ${labels[calcType]}</label><input type="number" id="ccu" placeholder="Valeur mesurée" step="any" inputmode="decimal"></div><div class="fd"><label>Valeur cible — ${labels[calcType]}</label><input type="number" id="cta" value="${PC[calcType].target}" step="any" inputmode="decimal"></div><button class="btn btn-o" onclick="calcParam()">Calculer</button><div id="cr2"></div>`;
+}
+function calcParam(){
+  const vol=parseFloat(document.getElementById('cv').value);const cur=parseFloat(document.getElementById('ccu').value);const tar=parseFloat(document.getElementById('cta').value);
+  if([vol,cur,tar].some(isNaN)){toast('⚠️ Remplis tous les champs');return}
+  const diff=tar-cur;
+  if(diff<=0){document.getElementById('cr2').innerHTML='<div class="al a-ok" style="margin-top:12px"><span class="ai">✅</span><div>Aucune correction nécessaire.</div></div>';return}
+  const f={kh:{d:1.25,u:'g de bicarbonate de soude (NaHCO₃)'},ca:{d:0.057,u:'g de chlorure de calcium (CaCl₂)'},mg:{d:0.1,u:'g de chlorure de magnésium (MgCl₂·6H₂O)'}};
+  const ff=f[calcType];const qty=(diff*vol*ff.d/100).toFixed(1);
+  document.getElementById('cr2').innerHTML=`<div class="cr"><div class="cn2">${qty} g</div><div class="cu">${ff.u}</div><div class="cn3">⚠️ Diluer dans eau osmosée avant ajout<br>Fractionner en 2-3 doses sur 24h<br>Re-tester après correction</div></div>`;
+}
+function calcWater(){
+  const vol=parseFloat(document.getElementById('cv').value);const pct=parseFloat(document.getElementById('cpct').value);
+  if([vol,pct].some(isNaN)){toast('⚠️ Remplis tous les champs');return}
+  const L=(vol*pct/100).toFixed(1);const salt=(L*35).toFixed(0);
+  document.getElementById('cr2').innerHTML=`<div class="cr"><div class="cn2">${L} L</div><div class="cu">d'eau à préparer</div><div class="cn3">≈ ${salt} g de Red Sea Salt (35 ppt)<br>Chauffer 24h · Brasser 24h · Vérifier salinité</div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// ÉQUIPEMENT
+// ═══════════════════════════════════════════
+function renderEquipment(){
+  const tot=equipment.reduce((s,e)=>s+(parseFloat(e.price)||0),0);
+  document.getElementById('eq-tot').textContent=Math.round(tot).toLocaleString('fr-FR')+'€';
+  document.getElementById('eq-nb').textContent=equipment.length;
+  const now=Date.now();
+  document.getElementById('equip-list').innerHTML=equipment.map(e=>{
+    let warranty='';
+    if(e.date&&e.warranty>0){
+      const exp=new Date(e.date);exp.setMonth(exp.getMonth()+parseInt(e.warranty));
+      const daysLeft=Math.floor((exp-now)/86400000);
+      warranty=daysLeft>0?`<div class="mk">Garantie : ${daysLeft}j restants</div>`:`<div class="mk" style="color:var(--red)">Garantie expirée</div>`;
+    }
+    return`<div class="er">
+      <div class="ei">${e.emoji||'⚙️'}</div>
+      <div style="flex:1">
+        <div class="en">${e.name}</div>
+        <div class="ed">${e.detail||''}</div>
+        ${e.date?`<div class="mk">Acheté le ${new Date(e.date+'T00:00:00').toLocaleDateString('fr-FR')}</div>`:''}
+        ${warranty}
+      </div>
+      <div style="text-align:right">
+        <div class="ep">${e.price>0?e.price+'€':'Offert'}</div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <span onclick="editEquip('${e.id}')" style="cursor:pointer;color:var(--o3);font-size:12px">✏️</span>
+          <span onclick="if(confirm('Supprimer ?')){delEquip('${e.id}')}" style="cursor:pointer;color:var(--red);font-size:12px">🗑</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function editEquip(id){
+  const e=equipment.find(x=>x.id===id);if(!e)return;
+  document.getElementById("eq-modal-title").textContent="Modifier l'équipement";
+  document.getElementById('eq-id').value=id;
+  document.getElementById('eq-name').value=e.name;
+  document.getElementById('eq-detail').value=e.detail||'';
+  document.getElementById('eq-price').value=e.price||'';
+  document.getElementById('eq-date').value=e.date||'';
+  document.getElementById('eq-warranty').value=e.warranty||'';
+  document.getElementById('eq-emoji').value=e.emoji||'';
+  openModal('modal-equip');
+}
+async function delEquip(id){
+  const {error}=await sb.from('equipment').delete().eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  equipment=equipment.filter(e=>e.id!==id);renderEquipment();toast('Équipement supprimé');
+}
+async function saveEquip(){
+  const name=document.getElementById('eq-name').value.trim();if(!name){toast('⚠️ Donne un nom');return}
+  const id=document.getElementById('eq-id').value;
+  const detail=document.getElementById('eq-detail').value.trim();
+  const price=parseFloat(document.getElementById('eq-price').value)||0;
+  const purchase_date=document.getElementById('eq-date').value||null;
+  const warranty_months=parseInt(document.getElementById('eq-warranty').value)||0;
+  const emoji=document.getElementById('eq-emoji').value||'⚙️';
+  const dbData={name,detail,price,purchase_date,warranty_months,emoji};
+  if(id){
+    const {error}=await sb.from('equipment').update(dbData).eq('id',id);
+    if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+    const e=equipment.find(x=>x.id==id);if(e)Object.assign(e,{name,detail,price,date:purchase_date||'',warranty:warranty_months,emoji});
+  }else{
+    const {data:inserted,error}=await sb.from('equipment').insert({owner_id:currentUser.id,...dbData}).select().single();
+    if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+    equipment.push({id:inserted.id,name,detail,price,date:purchase_date||'',warranty:warranty_months,emoji});
+  }
+  closeModal('modal-equip');
+  ['eq-name','eq-detail','eq-price','eq-date','eq-warranty','eq-emoji'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('eq-id').value='';
+  document.getElementById('eq-modal-title').textContent='Ajouter un équipement';
+  renderEquipment();toast('✓ Équipement enregistré');
+}
+
+// ═══════════════════════════════════════════
+// GALLERY
+// ═══════════════════════════════════════════
+function renderGallery(){
+  const el=document.getElementById('gg');const emp=document.getElementById('gg-empty');
+  if(!gallery.length){el.innerHTML='';emp.innerHTML="<div class=\"emp\"><div class=\"emp-i\">📸</div><div class=\"emp-t\">Aucune photo.<br>Capture l'évolution du bac !</div></div>";return}
+  emp.innerHTML='';
+  el.innerHTML=[...gallery].sort((a,b)=>b.ts-a.ts).map((p,i)=>`
+    <div class="gc">
+      <img src="${p.src}" loading="lazy" onclick="viewPhoto(${i})">
+      <div class="gc-del" onclick="delPhoto('${p.id}')">×</div>
+    </div>`).join('');
+}
+async function addPhotos(input){
+  const files=Array.from(input.files);
+  if(!files.length)return;
+  toast(`📤 Envoi de ${files.length} photo(s)...`);
+  let n=0;
+  for(const f of files){
+    const url=await uploadPhoto(f,'gallery');
+    if(!url)continue;
+    const {data:inserted,error}=await sb.from('gallery_photos').insert({owner_id:currentUser.id,photo_url:url,caption:f.name,taken_at:new Date().toISOString()}).select().single();
+    if(error){console.error(error);continue}
+    gallery.push({id:inserted.id,src:url,ts:Date.now(),name:f.name});
+    n++;
+  }
+  renderGallery();
+  toast(n>0?`📸 ${n} photo(s) ajoutée(s)`:'⚠️ Échec de l\'envoi');
+}
+async function delPhoto(id){
+  if(!confirm('Supprimer cette photo ?'))return;
+  const {error}=await sb.from('gallery_photos').delete().eq('id',id);
+  if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  gallery=gallery.filter(p=>p.id!=id);renderGallery();toast('Photo supprimée');
+}
+function viewPhoto(i){
+  const sorted=[...gallery].sort((a,b)=>b.ts-a.ts);
+  const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer';
+  const d=new Date(sorted[i].ts).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  o.innerHTML=`<img src="${sorted[i].src}" style="max-width:100%;max-height:85vh;object-fit:contain"><div style="color:var(--t3);font-size:12px;margin-top:10px">${d}</div><div style="position:absolute;top:20px;right:20px;color:rgba(255,255,255,.6);font-size:28px">×</div>`;
+  o.onclick=()=>document.body.removeChild(o);document.body.appendChild(o);
+}
+
+// ═══════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════
+function renderSettings(){
+  document.getElementById('ref-t').innerHTML=`
+    <thead><tr>${['Paramètre','Cible','Min','Max'].map(h=>`<th style="color:var(--t3);font-size:10px;text-align:left;padding:4px 0">${h}</th>`).join('')}</tr></thead>
+    <tbody>${Object.entries(PC).map(([k,c])=>`<tr style="border-bottom:.5px solid rgba(45,142,232,.06)"><td style="padding:7px 0;font-size:12px;color:var(--t2)">${c.label}</td><td style="text-align:center;color:var(--teal);font-size:12px;font-weight:600">${c.target}</td><td style="text-align:center;color:var(--t3);font-size:12px">${c.min}</td><td style="text-align:center;color:var(--t3);font-size:12px">${c.max}</td></tr>`).join('')}</tbody>`;
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify({measures,animals,corals,journal,equipment,gallery,exportDate:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`reefkeeper-${new Date().toISOString().slice(0,10)}.json`;a.click();
+  toast('✓ Sauvegarde exportée');
+}
+function importData(inp){
+  if(!inp.files[0])return;
+  toast('⚠️ Import désactivé avec Supabase — ajoute tes données manuellement ou contacte-moi pour une restauration complète');
+  inp.value='';
+}
+async function confirmFullReset(){
+  if(!confirm('⚠️ Ceci va supprimer DÉFINITIVEMENT toutes tes données dans Supabase (mesures, animaux, coraux, journal, équipement, photos). Continuer ?'))return;
+  if(!confirm('Dernière confirmation : aucune récupération possible après ça. Vraiment tout supprimer ?'))return;
+  toast('🗑 Suppression en cours...');
+  try{
+    await Promise.all([
+      sb.from('measures').delete().eq('owner_id',currentUser.id),
+      sb.from('animals').delete().eq('owner_id',currentUser.id),
+      sb.from('corals').delete().eq('owner_id',currentUser.id),
+      sb.from('journal_entries').delete().eq('owner_id',currentUser.id),
+      sb.from('equipment').delete().eq('owner_id',currentUser.id),
+      sb.from('gallery_photos').delete().eq('owner_id',currentUser.id)
+    ]);
+    await sb.from('app_settings').update({daily_done:{},weekly_done:{}}).eq('owner_id',currentUser.id);
+    toast('✓ Données supprimées, rechargement...');
+    setTimeout(()=>location.reload(),1200);
+  }catch(err){
+    console.error(err);
+    toast('⚠️ Échec de la réinitialisation — réessaie');
+  }
+}
+
+// ═══════════════════════════════════════════
+// INIT — vérifie la session avant d'afficher l'app
+// ═══════════════════════════════════════════
+async function startApp(){
+  hideLoginScreen();
+  document.getElementById('sm-user-email').textContent=currentUser.email||'—';
+  showSyncStatus('🔄 Connexion à Supabase...', false);
+  await loadAllData();
+  if(dbReady){
+    showSyncStatus('✓ Synchronisé', false);
+  }
+  renderAquarium();
+  renderCalcContent();
+  fetchWeather();
+}
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  document.getElementById('an-date').value=new Date().toISOString().slice(0,10);
+  const hasSession=await checkSession();
+  if(hasSession){
+    await startApp();
+  }else{
+    showLoginScreen();
+  }
+  // Réagit à une déconnexion déclenchée ailleurs (ex: token expiré)
+  sb.auth.onAuthStateChange((event)=>{
+    if(event==='SIGNED_OUT'){
+      currentUser=null;
+      showLoginScreen();
+    }
+  });
+});
+</script>
+</body>
+</html>
