@@ -24,14 +24,16 @@
 --mw:285px;--tbh:58px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg0);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:var(--t1);overflow:hidden}
+html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:var(--t1);overflow:hidden}
 /* BUBBLES */
 .bbl{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
 .bb{position:absolute;border-radius:50%;opacity:.03;background:var(--o3);animation:rise linear infinite}
 @keyframes rise{from{transform:translateY(110vh)}to{transform:translateY(-200px)}}
 /* APP */
 #app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:430px;margin:0 auto;background:var(--bg0)}
-@media(min-width:768px){#app{max-width:500px;box-shadow:0 0 100px rgba(0,0,0,.8)}body{background:#01040a;display:flex;align-items:center;justify-content:center}}
+@media(min-width:768px){#app{max-width:760px;box-shadow:0 0 100px rgba(0,0,0,.8)}body{background:#01040a;display:flex;flex-direction:row;align-items:center;justify-content:center;width:100vw;height:100vh}}
+@media(min-width:1100px){#app{max-width:1080px}}
+@media(min-width:1500px){#app{max-width:1280px}}
 /* OVERLAY */
 #ov{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
 #ov.open{opacity:1;pointer-events:all}
@@ -81,6 +83,7 @@ html,body{height:100%;background:var(--bg0);font-family:-apple-system,BlinkMacSy
 .cnt::-webkit-scrollbar{width:2px}
 .cnt::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
 .pg{display:none;padding:14px;padding-bottom:24px;animation:fi .2s ease}
+@media(min-width:1100px){.pg{padding:24px 32px 32px}}
 .pg.active{display:block}
 @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 /* SECTION HDR */
@@ -207,6 +210,7 @@ html,body{height:100%;background:var(--bg0);font-family:-apple-system,BlinkMacSy
 .ep{font-size:12px;color:var(--o4);font-weight:600;white-space:nowrap}
 /* GALLERY */
 .gg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;border-radius:var(--r);overflow:hidden;margin-bottom:10px}
+@media(min-width:1100px){.gg{grid-template-columns:repeat(6,1fr)}}
 .gc{aspect-ratio:1;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;overflow:hidden;position:relative}
 .gc img{width:100%;height:100%;object-fit:cover}
 .gc-del{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
@@ -344,6 +348,7 @@ html,body{height:100%;background:var(--bg0);font-family:-apple-system,BlinkMacSy
       <div class="gl" id="last-measures"></div>
       <div class="sh"><span class="shl">Aujourd'hui</span></div>
       <div class="gl" id="daily-checks"></div>
+      <div id="weekly-section"></div>
     </div>
 
     <!-- HISTORIQUE -->
@@ -402,7 +407,7 @@ html,body{height:100%;background:var(--bg0);font-family:-apple-system,BlinkMacSy
 
     <!-- DÉCOUVERTES -->
     <div class="pg" id="pg-decouvertes">
-      <div class="al a-info"><span class="ai">🔭</span><div><strong>Recommandations pour ton bac</strong> — basées sur l'âge et le volume de ton Reefer 300 XL G3.</div></div>
+      <div id="dec-context"></div>
       <div class="sh"><span class="shl">Poissons recommandés</span></div>
       <div id="dec-fish"></div>
       <div class="sh"><span class="shl">Coraux recommandés</span></div>
@@ -702,24 +707,30 @@ const CORAL_TIPS = {
   autre:{food:["Selon l'espèce"],care:['Vérifier les besoins spécifiques'],observe:['Comportement normal'],compat:['Vérifier compatibilité']}
 };
 
-const DEC_DATA = {
+// Base de connaissances pour le moteur de recommandations.
+// minDays = jours de maturation du bac recommandés avant introduction.
+// minVol = volume minimum du bac en litres.
+// incompatWith = liste de mots-clés (genre ou espèce) à éviter en même temps.
+// territorial = true si l'espèce défend un territoire (limite le nombre de congénères/similaires).
+const SPECIES_DB = {
   fish:[
-    {emoji:"🐠",name:"Clown Maroon Gold Stripe",sci:"Premnas biaculeatus",diff:2,intro:"Semaine 1 — Phase 2",vol:200,tips:"Robuste, excellent débutant. Idéal avec Radianthus malu.",compat:"Éviter avec d'autres clownfish."},
-    {emoji:'🐡',name:'Dartfish Décoré',sci:'Nemateleotris decora',diff:2,intro:'Après stabilisation',vol:100,tips:'Paisible, nage élégante. Couvercle obligatoire.',compat:'Très pacifique.'},
-    {emoji:'🐟',name:'Centropyge bispinosus',sci:'Centropyge bispinosus',diff:2,intro:'Bac mature 3 mois+',vol:150,tips:'Poisson-ange nain coloré. Peut grignoter les coraux mous.',compat:'Attention avec coraux.'},
-    {emoji:'🦈',name:'Ecsenius bicolor',sci:'Ecsenius bicolor',diff:1,intro:'Bac stabilisé',vol:80,tips:'Blenny herbivore, mange les algues. Très facile.',compat:'Excellent avec tous.'}
+    {emoji:'🐠',name:'Clown Maroon Gold Stripe',sci:'Premnas biaculeatus',diff:2,minDays:60,minVol:200,tips:'Robuste, excellent débutant. Idéal avec une anémone Radianthus.',compat:'Hôte naturel : Radianthus malu.',incompatWith:['biaculeatus','clownfish','amphiprion'],territorial:true},
+    {emoji:'🐡',name:'Dartfish Décoré',sci:'Nemateleotris decora',diff:2,minDays:60,minVol:100,tips:'Paisible, nage élégante. Couvercle de bac obligatoire (sauteur).',compat:'Très pacifique, évite les poissons agressifs.',incompatWith:[],territorial:false},
+    {emoji:'🐟',name:'Centropyge bispinosus',sci:'Centropyge bispinosus',diff:2,minDays:90,minVol:150,tips:'Poisson-ange nain coloré. Peut grignoter coraux mous et LPS.',compat:'Attention avec les coraux mous déjà en place.',incompatWith:['centropyge'],territorial:true},
+    {emoji:'🦈',name:'Ecsenius bicolor',sci:'Ecsenius bicolor',diff:1,minDays:30,minVol:80,tips:'Blenny herbivore, mange les algues. Très facile.',compat:'Excellent avec presque toutes les espèces.',incompatWith:[],territorial:false},
+    {emoji:'🐟',name:'Chromis viridis',sci:'Chromis viridis',diff:1,minDays:30,minVol:100,tips:'Poisson de banc paisible, idéal pour débuter en groupe.',compat:'Vit en banc, prévoir plusieurs individus.',incompatWith:[],territorial:false}
   ],
   coral:[
-    {emoji:'⚪',name:'Zoanthus / Palythoa',sci:'Zoanthus sp.',diff:1,intro:'Semaine 5 Phase 2',vol:100,tips:'Premier corail idéal. Robuste, coloré, croissance rapide.',compat:'Compatible avec tout.'},
-    {emoji:'🌿',name:'Clavularia vert',sci:'Clavularia viridis',diff:1,intro:'Semaine 5 Phase 2',vol:100,tips:'Corail mou très facile. Beau, croissance rapide.',compat:'Éloigner des SPS.'},
-    {emoji:"🔨",name:"Hammer Coral",sci:"Euphyllia ancora",diff:2,intro:"Bac 2 mois+",vol:150,tips:"LPS spectaculaire. Demande de l'espace autour de lui.",compat:"Tentacules urticants !"},
-    {emoji:'🪸',name:'Chalice',sci:'Echinophyllia sp.',diff:3,intro:'Bac stabilisé 3 mois+',vol:200,tips:'Coloration unique. Lumière modérée, courant faible.',compat:'Bon avec LPS.'}
+    {emoji:'⚪',name:'Zoanthus / Palythoa',sci:'Zoanthus sp.',diff:1,minDays:35,minVol:50,tips:'Premier corail idéal. Robuste, coloré, croissance rapide.',compat:'Compatible avec presque tout type.',incompatWith:[],territorial:false},
+    {emoji:'🌿',name:'Clavularia vert',sci:'Clavularia viridis',diff:1,minDays:35,minVol:50,tips:'Corail mou très facile. Croissance rapide, peut envahir.',compat:'Éloigner des SPS (peut les irriter en poussant).',incompatWith:['sps'],territorial:false},
+    {emoji:'🔨',name:'Hammer Coral',sci:'Euphyllia ancora',diff:2,minDays:60,minVol:150,tips:"LPS spectaculaire. Demande de l'espace autour de lui.",compat:'Tentacules urticants — espacer des autres LPS de 15cm+.',incompatWith:['lps','euphyllia'],territorial:true},
+    {emoji:'🪸',name:'Chalice',sci:'Echinophyllia sp.',diff:3,minDays:90,minVol:150,tips:'Coloration unique. Lumière modérée, courant faible.',compat:'Bon voisinage avec les autres LPS calmes.',incompatWith:[],territorial:false}
   ],
   inv:[
-    {emoji:"🐌",name:"Escargots Turbo",sci:"Turbo sp.",diff:1,intro:"Semaine 3 Phase 2",vol:100,tips:"Excellent nettoyeur d'algues. Indispensable.",compat:"Parfait avec tout."},
-    {emoji:'🦔',name:'Oursin Mespilia',sci:'Mespilia globulus',diff:1,intro:'Semaine 3 Phase 2',vol:100,tips:'Mange les algues, très actif la nuit.',compat:'Éviter avec starfish.'},
-    {emoji:'🦐',name:'Crevette Lysmata',sci:'Lysmata amboinensis',diff:1,intro:'Bac stabilisé',vol:80,tips:'Crevette nettoyeuse. Nettoie les poissons des parasites.',compat:'Éviter avec Canthigaster.'},
-    {emoji:'🌺',name:'Sabelle',sci:'Sabellastarte sp.',diff:2,intro:'Bac mature',vol:150,tips:'Ver tubicole filtreur. Très esthétique mais fragile.',compat:'Éviter les poissons piqueurs.'}
+    {emoji:'🐌',name:'Escargots Turbo',sci:'Turbo sp.',diff:1,minDays:21,minVol:50,tips:"Excellent nettoyeur d'algues. Quasi indispensable.",compat:'Parfait avec toutes les espèces.',incompatWith:[],territorial:false},
+    {emoji:'🦔',name:'Oursin Mespilia',sci:'Mespilia globulus',diff:1,minDays:21,minVol:100,tips:'Mange les algues, très actif la nuit.',compat:'Éviter avec les étoiles de mer prédatrices.',incompatWith:['starfish'],territorial:false},
+    {emoji:'🦐',name:'Crevette Lysmata',sci:'Lysmata amboinensis',diff:1,minDays:45,minVol:80,tips:'Crevette nettoyeuse, retire les parasites des poissons.',compat:'Éviter avec les poissons-globes (Canthigaster).',incompatWith:['canthigaster','toby'],territorial:false},
+    {emoji:'🌺',name:'Sabelle',sci:'Sabellastarte sp.',diff:2,minDays:60,minVol:100,tips:'Ver tubicole filtreur. Esthétique mais fragile.',compat:'Éviter les poissons piqueurs/becs (Canthigaster).',incompatWith:['canthigaster','toby','piqueur'],territorial:false}
   ]
 };
 
@@ -795,12 +806,36 @@ function hideLoginScreen(){
 }
 
 async function uploadPhoto(file, folder){
-  const ext=file.name.split('.').pop()||'jpg';
+  // Sur iOS, une photo prise directement avec l'appareil photo peut avoir
+  // un nom de fichier vide ou sans extension fiable. On déduit l'extension
+  // du type MIME réel du fichier, avec un repli sûr sur 'jpg'.
+  const mimeExt = {'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp','image/heic':'heic','image/heif':'heif','image/gif':'gif'};
+  let ext = mimeExt[file.type] || (file.name && file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg');
+  if(!ext || ext.length > 5) ext='jpg';
   const path=`${folder}/${currentUser.id}-${Date.now()}-${Math.floor(Math.random()*9999)}.${ext}`;
-  const {error}=await sb.storage.from('reefkeeper-photos').upload(path, file, {cacheControl:'3600', upsert:false});
-  if(error){console.error(error);toast('⚠️ Échec upload photo');return ''}
+  const {error}=await sb.storage.from('reefkeeper-photos').upload(path, file, {cacheControl:'3600', upsert:false, contentType: file.type || 'image/jpeg'});
+  if(error){
+    console.error('Upload photo error:', error);
+    toast('⚠️ Échec upload photo: ' + (error.message || 'erreur inconnue'));
+    return '';
+  }
   const {data}=sb.storage.from('reefkeeper-photos').getPublicUrl(path);
   return data.publicUrl;
+}
+
+// Purge les entrées de checklist (quotidienne/hebdo) de plus de 60 jours,
+// pour éviter que l'objet stocké dans Supabase ne grossisse indéfiniment.
+// S'exécute silencieusement, sauvegarde seulement si un nettoyage a eu lieu.
+function purgeOldChecklists(){
+  const cutoff=Date.now()-60*86400000;
+  let changed=false;
+  for(const key in dailyDone){
+    if(new Date(key).getTime() < cutoff){ delete dailyDone[key]; changed=true; }
+  }
+  for(const key in weeklyDone){
+    if(new Date(key).getTime() < cutoff){ delete weeklyDone[key]; changed=true; }
+  }
+  if(changed) saveSettings();
 }
 
 async function loadAllData(){
@@ -823,6 +858,7 @@ async function loadAllData(){
     equipment= (eR.data||[]).map(e=>({id:e.id,emoji:e.emoji||'⚙️',name:e.name,detail:e.detail||'',price:parseFloat(e.price)||0,date:e.purchase_date||'',warranty:e.warranty_months||0}));
     gallery  = (gR.data||[]).map(p=>({id:p.id,src:p.photo_url,ts:new Date(p.taken_at).getTime(),name:p.caption||''}));
     if(sR.data){ dailyDone=sR.data.daily_done||{}; weeklyDone=sR.data.weekly_done||{}; }
+    purgeOldChecklists();
     dbReady=true;
   }catch(err){
     console.error('Supabase load error - message:', err?.message);
@@ -978,9 +1014,27 @@ function renderAquarium(){
     `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>`+
     DAILY_C.map((c,i)=>`<div class="wc"><div class="wck ${dailyDone[today][i]?'dn':''}" onclick="togDC(${i},'${today}')">${dailyDone[today][i]?'✓':''}</div><span class="wcl ${dailyDone[today][i]?'dn':''}">${c}</span></div>`).join('');
 
+  renderWeeklySection();
   renderMenuTests();
 }
 function togDC(i,d){dailyDone[d][i]=!dailyDone[d][i];saveSettings();renderAquarium()}
+
+// Tâches du dimanche : visibles uniquement le dimanche (getDay()===0),
+// remise à zéro automatique chaque nouveau dimanche (clé = date du jour).
+function renderWeeklySection(){
+  const el=document.getElementById('weekly-section');
+  if(!el)return;
+  const now=new Date();
+  if(now.getDay()!==0){ el.innerHTML=''; return; } // pas dimanche → section masquée
+  const wk=now.toDateString();
+  if(!weeklyDone[wk])weeklyDone[wk]={};
+  el.innerHTML = `
+    <div class="sh"><span class="shl">Contrôle du dimanche</span></div>
+    <div class="gl">
+      ${SUNDAY_C.map((c,i)=>`<div class="wc"><div class="wck ${weeklyDone[wk][i]?'dn':''}" onclick="togWC(${i},'${wk}')">${weeklyDone[wk][i]?'✓':''}</div><span class="wcl ${weeklyDone[wk][i]?'dn':''}">${c}</span></div>`).join('')}
+    </div>`;
+}
+function togWC(i,wk){weeklyDone[wk][i]=!weeklyDone[wk][i];saveSettings();renderWeeklySection()}
 
 // ═══════════════════════════════════════════
 // MESURE
@@ -1370,32 +1424,97 @@ async function delJournal(id){
 }
 
 // ═══════════════════════════════════════════
-// DÉCOUVERTES
+// DÉCOUVERTES — moteur de recommandations dynamique
+// Croise la base de connaissances avec l'état réel du bac :
+// volume, âge, phase, espèces déjà présentes ou prévues.
 // ═══════════════════════════════════════════
+const TANK_VOLUME = 300; // Reefer 300 XL G3, volume net en litres
+
+function getOwnedKeywords(){
+  // Construit la liste de mots-clés (genre/espèce/famille) déjà présents
+  // ou prévus dans le bac, pour détecter les incompatibilités.
+  const all=[...animals.map(a=>a.sci||a.name), ...corals.map(c=>c.name)];
+  return all.join(' ').toLowerCase();
+}
+
+function evaluateSpecies(sp, days, ownedKw){
+  const reasons=[]; // raisons d'alerte/blocage
+  let status='ok'; // ok | soon | blocked
+
+  if(TANK_VOLUME < sp.minVol){
+    status='blocked';
+    reasons.push(`Volume insuffisant : ${sp.minVol}L requis, bac de ${TANK_VOLUME}L`);
+  }
+  if(days < sp.minDays){
+    const remaining=sp.minDays-days;
+    if(status!=='blocked')status='soon';
+    reasons.push(`Bac trop jeune : encore ${remaining}j avant maturité recommandée`);
+  }
+  // Incompatibilités avec ce qui est déjà présent/prévu
+  const conflicts=sp.incompatWith.filter(kw=>ownedKw.includes(kw.toLowerCase()));
+  if(conflicts.length){
+    status='blocked';
+    reasons.push(`Incompatible avec une espèce déjà présente/prévue dans ton bac`);
+  }
+  // Déjà dans le bac ?
+  const alreadyOwned = ownedKw.includes(sp.sci.toLowerCase()) || ownedKw.includes(sp.name.toLowerCase());
+
+  return {status, reasons, alreadyOwned};
+}
+
 function renderDec(){
   const days=daysFromStart();
+  const phase=getPhase();
+  const ownedKw=getOwnedKeywords();
   const diff2str={1:'⭐ Facile',2:'⭐⭐ Intermédiaire',3:'⭐⭐⭐ Avancé',4:'⭐⭐⭐⭐ Expert'};
   const diff2cls={1:'diff-1',2:'diff-2',3:'diff-3',4:'diff-4'};
-  function dcH(arr){return arr.map(d=>`
-    <div class="dc">
-      <div class="dc-top">
-        <div class="dc-ico">${d.emoji}</div>
-        <div>
-          <div class="dc-n">${d.name}</div>
-          <div class="dc-s">${d.sci}</div>
-          <span class="diff ${diff2cls[d.diff]}">${diff2str[d.diff]}</span>
+
+  function dcH(arr){
+    // Trie : compatible maintenant d'abord, puis bientôt, puis bloqué. Masque les espèces déjà possédées.
+    const evaluated = arr
+      .map(sp=>({sp, ev:evaluateSpecies(sp, days, ownedKw)}))
+      .filter(x=>!x.ev.alreadyOwned);
+    const order={ok:0,soon:1,blocked:2};
+    evaluated.sort((a,b)=>order[a.ev.status]-order[b.ev.status]);
+
+    if(!evaluated.length)return '<div class="emp"><div class="emp-i">✅</div><div class="emp-t">Tu as déjà toutes les espèces de cette catégorie dans ta liste !</div></div>';
+
+    return evaluated.map(({sp,ev})=>{
+      const statusBadge = ev.status==='ok'
+        ? '<span class="cbadge b-tank">✅ Compatible maintenant</span>'
+        : ev.status==='soon'
+        ? '<span class="cbadge b-plan">⏳ Bientôt possible</span>'
+        : '<span class="cbadge b-de">🚫 Non recommandé</span>';
+      return `<div class="dc" style="${ev.status==='blocked'?'opacity:.6':''}">
+        <div class="dc-top">
+          <div class="dc-ico">${sp.emoji}</div>
+          <div>
+            <div class="dc-n">${sp.name}</div>
+            <div class="dc-s">${sp.sci}</div>
+            <span class="diff ${diff2cls[sp.diff]}">${diff2str[sp.diff]}</span>
+          </div>
         </div>
-      </div>
-      <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:6px">${d.tips}</div>
-      <div style="display:flex;gap:12px;font-size:11px;color:var(--t3)">
-        <span>📅 ${d.intro}</span>
-        <span>🪣 ${d.vol}L min</span>
-      </div>
-      ${d.compat?`<div style="font-size:11px;color:var(--t4);margin-top:4px">⚠️ ${d.compat}</div>`:''}
-    </div>`).join('')}
-  document.getElementById('dec-fish').innerHTML=dcH(DEC_DATA.fish);
-  document.getElementById('dec-coral').innerHTML=dcH(DEC_DATA.coral);
-  document.getElementById('dec-inv').innerHTML=dcH(DEC_DATA.inv);
+        <div style="margin:6px 0">${statusBadge}</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:6px">${sp.tips}</div>
+        <div style="display:flex;gap:12px;font-size:11px;color:var(--t3)">
+          <span>📅 ${sp.minDays}j min</span>
+          <span>🪣 ${sp.minVol}L min</span>
+        </div>
+        ${sp.compat?`<div style="font-size:11px;color:var(--t4);margin-top:4px">💡 ${sp.compat}</div>`:''}
+        ${ev.reasons.length?`<div style="font-size:11px;color:${ev.status==='blocked'?'var(--red)':'var(--amber)'};margin-top:5px">⚠️ ${ev.reasons.join(' · ')}</div>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  // Bandeau de contexte réel, en haut de la page
+  const ctxEl=document.getElementById('dec-context');
+  if(ctxEl){
+    ctxEl.innerHTML=`<div class="al a-info"><span class="ai">🔭</span><div><strong>Ton bac :</strong> ${TANK_VOLUME}L · Jour ${days} · Phase « ${phase.label} ». Les recommandations ci-dessous sont calculées sur ces critères réels, et tiennent compte de ce que tu as déjà.</div></div>`;
+  }
+
+  document.getElementById('dec-fish').innerHTML=dcH(SPECIES_DB.fish);
+  document.getElementById('dec-coral').innerHTML=dcH(SPECIES_DB.coral);
+  document.getElementById('dec-inv').innerHTML=dcH(SPECIES_DB.inv);
 }
 
 // ═══════════════════════════════════════════
