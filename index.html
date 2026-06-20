@@ -440,6 +440,8 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         <div class="sb" onclick="setDecCategory('coral',this)">🪸 Coraux</div>
       </div>
       <div id="swipe-zone"></div>
+      <div class="sh" style="margin-top:18px"><span class="shl">Éliminés</span><span class="shr" id="elim-count" onclick="toggleEliminatedView()">Voir (0)</span></div>
+      <div id="eliminated-list" style="display:none"></div>
     </div>
 
     <!-- CALCULATEUR -->
@@ -1847,6 +1849,58 @@ function renderDec(){
   }
   currentDeck=buildDeck(decCategory);
   renderSwipeZone();
+  updateEliminatedCount();
+}
+
+function getEliminatedSpecies(){
+  const allSpecies=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv];
+  return allSpecies.filter(sp=>speciesDecisions[sp.sci]==='eliminated');
+}
+
+function updateEliminatedCount(){
+  const el=document.getElementById('elim-count');
+  if(!el)return;
+  const n=getEliminatedSpecies().length;
+  const showing=document.getElementById('eliminated-list').style.display!=='none';
+  el.textContent=(showing?'Masquer':'Voir')+` (${n})`;
+}
+
+function toggleEliminatedView(){
+  const list=document.getElementById('eliminated-list');
+  const showing=list.style.display!=='none';
+  list.style.display=showing?'none':'';
+  updateEliminatedCount();
+  if(!showing) renderEliminatedList();
+}
+
+function renderEliminatedList(){
+  const el=document.getElementById('eliminated-list');
+  if(!el)return;
+  const eliminated=getEliminatedSpecies();
+  if(!eliminated.length){
+    el.innerHTML='<div class="emp" style="padding:14px 0"><div class="emp-t">Aucune espèce éliminée pour l\'instant.</div></div>';
+    return;
+  }
+  el.innerHTML=eliminated.map(sp=>`
+    <div class="cc" style="cursor:default">
+      <div class="ca pl">${sp.emoji}</div>
+      <div class="ci">
+        <div class="cn">${sp.name}</div>
+        <div class="cs">${sp.sci}</div>
+      </div>
+      <button class="btn btn-g btn-sm" onclick="restoreSpecies('${sp.sci}')">↩️ Revoir</button>
+    </div>`).join('');
+}
+
+async function restoreSpecies(sci){
+  delete speciesDecisions[sci];
+  const {error}=await sb.from('species_decisions').delete().eq('owner_id',currentUser.id).eq('species_sci',sci);
+  if(error)console.error('Erreur suppression décision:',error);
+  toast('↩️ Remis dans le paquet de cartes');
+  renderEliminatedList();
+  currentDeck=buildDeck(decCategory);
+  renderSwipeZone();
+  updateEliminatedCount();
 }
 
 function renderSwipeZone(){
