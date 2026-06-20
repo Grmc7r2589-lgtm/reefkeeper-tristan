@@ -516,6 +516,13 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     </div>
     <div class="fd"><label>Valeur</label><input type="number" id="av" step="any" placeholder="Ex : 25.2" inputmode="decimal"></div>
     <div class="fd"><label>Commentaire (optionnel)</label><input type="text" id="ac" placeholder="Ex : après brassage"></div>
+    <div class="fd"><label>Photo du test (optionnel)</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;background:rgba(12,32,64,.8);border:.5px solid rgba(45,142,232,.2);border-radius:var(--rx);font-size:13px;color:var(--t2)">
+        📷 Photo du test colorimétrique
+        <input type="file" accept="image/*" style="display:none" onchange="previewMeasurePhoto(this)">
+      </label>
+      <div id="am-photo-preview" style="margin-top:7px"></div>
+    </div>
     <button class="btn btn-o" onclick="addMeasure()" style="margin-bottom:8px">Enregistrer</button>
     <button class="btn btn-g" onclick="closeModal('modal-mesure')" style="width:100%">Annuler</button>
   </div>
@@ -626,7 +633,15 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     <div class="mh"></div><div class="mt">Modifier la mesure</div>
     <div class="fd"><label>Valeur</label><input type="number" id="em-val" step="any" inputmode="decimal"></div>
     <div class="fd"><label>Commentaire</label><input type="text" id="em-comment"></div>
+    <div class="fd"><label>Photo du test</label>
+      <div id="em-photo-current" style="margin-bottom:7px"></div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;background:rgba(12,32,64,.8);border:.5px solid rgba(45,142,232,.2);border-radius:var(--rx);font-size:13px;color:var(--t2)">
+        📷 <span id="em-photo-label">Ajouter une photo</span>
+        <input type="file" accept="image/*" style="display:none" onchange="previewEditMeasurePhoto(this)">
+      </label>
+    </div>
     <input type="hidden" id="em-id">
+    <input type="hidden" id="em-photo">
     <button class="btn btn-o" onclick="saveEditMeasure()" style="margin-bottom:8px">Enregistrer</button>
     <button class="btn btn-g" onclick="closeModal('modal-edit-measure')" style="width:100%">Annuler</button>
   </div>
@@ -805,15 +820,46 @@ function hideLoginScreen(){
   document.getElementById('app').style.display='flex';
 }
 
+// Compresse et redimensionne une image côté client avant upload, via Canvas.
+// Limite la plus grande dimension à maxDim px et réencode en JPEG avec la
+// qualité donnée. Réduit nettement le poids des photos iPhone (souvent 3-4 Mo)
+// sans dépendance externe. En cas d'échec (format non supporté, etc.),
+// retourne le fichier original tel quel — la photo reste utilisable.
+async function compressImage(file, maxDim=1600, quality=0.75){
+  try{
+    if(!file.type.startsWith('image/')) return file;
+    const bitmap = await createImageBitmap(file);
+    let {width, height} = bitmap;
+    if(width > maxDim || height > maxDim){
+      const ratio = Math.min(maxDim/width, maxDim/height);
+      width = Math.round(width*ratio);
+      height = Math.round(height*ratio);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if(!blob) return file;
+    return new File([blob], (file.name||'photo').replace(/\.[^.]+$/,'')+'.jpg', {type:'image/jpeg'});
+  }catch(err){
+    console.error('Compression image échouée, envoi du fichier original:', err);
+    return file;
+  }
+}
+
 async function uploadPhoto(file, folder){
+  // Compression automatique avant envoi (réduit le poids, accélère l'upload
+  // sur réseau mobile, économise l'espace Supabase Storage).
+  const compressed = await compressImage(file);
   // Sur iOS, une photo prise directement avec l'appareil photo peut avoir
   // un nom de fichier vide ou sans extension fiable. On déduit l'extension
   // du type MIME réel du fichier, avec un repli sûr sur 'jpg'.
   const mimeExt = {'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp','image/heic':'heic','image/heif':'heif','image/gif':'gif'};
-  let ext = mimeExt[file.type] || (file.name && file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg');
+  let ext = mimeExt[compressed.type] || (compressed.name && compressed.name.includes('.') ? compressed.name.split('.').pop().toLowerCase() : 'jpg');
   if(!ext || ext.length > 5) ext='jpg';
   const path=`${folder}/${currentUser.id}-${Date.now()}-${Math.floor(Math.random()*9999)}.${ext}`;
-  const {error}=await sb.storage.from('reefkeeper-photos').upload(path, file, {cacheControl:'3600', upsert:false, contentType: file.type || 'image/jpeg'});
+  const {error}=await sb.storage.from('reefkeeper-photos').upload(path, compressed, {cacheControl:'3600', upsert:false, contentType: compressed.type || 'image/jpeg'});
   if(error){
     console.error('Upload photo error:', error);
     toast('⚠️ Échec upload photo: ' + (error.message || 'erreur inconnue'));
@@ -822,6 +868,7 @@ async function uploadPhoto(file, folder){
   const {data}=sb.storage.from('reefkeeper-photos').getPublicUrl(path);
   return data.publicUrl;
 }
+
 
 // Purge les entrées de checklist (quotidienne/hebdo) de plus de 60 jours,
 // pour éviter que l'objet stocké dans Supabase ne grossisse indéfiniment.
@@ -851,7 +898,7 @@ async function loadAllData(){
       sb.from('app_settings').select('*').eq('owner_id',oid).maybeSingle()
     ]);
     if(mR.error) throw mR.error;
-    measures = (mR.data||[]).map(m=>({id:m.id,param:m.param,value:parseFloat(m.value),ts:new Date(m.ts).getTime(),comment:m.comment||''}));
+    measures = (mR.data||[]).map(m=>({id:m.id,param:m.param,value:parseFloat(m.value),ts:new Date(m.ts).getTime(),comment:m.comment||'',photo:m.photo_url||''}));
     animals  = (aR.data||[]).map(a=>({id:a.id,cat:a.cat,status:a.status,name:a.name,sci:a.sci||'',emoji:a.emoji||'🐟',photo:a.photo_url||'',date:a.date||'',notes:a.notes||''}));
     corals   = (cR.data||[]).map(c=>({id:c.id,status:c.status,name:c.name,type:c.type,emoji:c.emoji||'🪸',photo:c.photo_url||'',location:c.location||'',notes:c.notes||''}));
     journal  = (jR.data||[]).map(j=>({id:j.id,date:j.entry_date,title:j.title,cat:j.category,note:j.note||'',photo:j.photo_url||''}));
@@ -1039,17 +1086,32 @@ function togWC(i,wk){weeklyDone[wk][i]=!weeklyDone[wk][i];saveSettings();renderW
 // ═══════════════════════════════════════════
 // MESURE
 // ═══════════════════════════════════════════
+let pendingMeasurePhoto=null;
+function previewMeasurePhoto(inp){
+  if(!inp.files[0])return;
+  pendingMeasurePhoto=inp.files[0];
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById('am-photo-preview').innerHTML=`<img src="${e.target.result}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`};
+  r.readAsDataURL(inp.files[0]);
+}
 async function addMeasure(){
   const p=document.getElementById('ap').value;
   const v=parseFloat(document.getElementById('av').value);
   if(isNaN(v)){toast('⚠️ Valeur numérique requise');return}
   const comment=document.getElementById('ac').value.trim();
   const ts=Date.now();
+  let photoUrl='';
+  if(pendingMeasurePhoto){
+    toast('📤 Envoi de la photo...');
+    photoUrl=await uploadPhoto(pendingMeasurePhoto,'measures');
+  }
   document.getElementById('av').value='';document.getElementById('ac').value='';
+  document.getElementById('am-photo-preview').innerHTML='';
+  pendingMeasurePhoto=null;
   closeModal('modal-mesure');
-  const {data,error}=await sb.from('measures').insert({owner_id:currentUser.id,param:p,value:v,comment,ts:new Date(ts).toISOString()}).select().single();
+  const {data,error}=await sb.from('measures').insert({owner_id:currentUser.id,param:p,value:v,comment,ts:new Date(ts).toISOString(),photo_url:photoUrl}).select().single();
   if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
-  measures.push({id:data.id,param:p,value:v,ts,comment});
+  measures.push({id:data.id,param:p,value:v,ts,comment,photo:photoUrl});
   renderAquarium();toast('✓ Mesure enregistrée');
 }
 
@@ -1085,6 +1147,7 @@ function renderHistory(){
         <td style="padding:8px 6px;font-weight:600">${fv(m.param,m.value)} ${cfg.unit}</td>
         <td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:20px;font-size:11px;background:${s==='ok'?'var(--td)':s==='warn'?'var(--ad)':'var(--rd)'};color:${sc[s]}">${sl[s]}</span></td>
         <td style="padding:8px 4px">
+          ${m.photo?`<span onclick="viewMeasurePhoto('${m.id}')" style="cursor:pointer;font-size:12px;margin-right:8px">📷</span>`:''}
           <span onclick="editMeasure('${m.id}')" style="cursor:pointer;color:var(--o3);font-size:12px;margin-right:8px">✏️</span>
           <span onclick="delMeasure('${m.id}')" style="cursor:pointer;color:var(--red);font-size:12px">🗑</span>
         </td>
@@ -1097,7 +1160,34 @@ function editMeasure(id){
   document.getElementById('em-id').value=id;
   document.getElementById('em-val').value=m.value;
   document.getElementById('em-comment').value=m.comment||'';
+  document.getElementById('em-photo').value=m.photo||'';
+  pendingEditMeasurePhoto=null;
+  renderEditMeasurePhotoUI(m.photo||'');
   openModal('modal-edit-measure');
+}
+let pendingEditMeasurePhoto=null;
+function renderEditMeasurePhotoUI(photoUrl){
+  const cur=document.getElementById('em-photo-current');
+  const lbl=document.getElementById('em-photo-label');
+  if(photoUrl){
+    cur.innerHTML=`<div style="position:relative;display:inline-block"><img src="${photoUrl}" style="width:70px;height:70px;border-radius:10px;object-fit:cover"><div onclick="removeEditMeasurePhoto()" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer">×</div></div>`;
+    lbl.textContent='Remplacer la photo';
+  }else{
+    cur.innerHTML='';
+    lbl.textContent='Ajouter une photo';
+  }
+}
+function removeEditMeasurePhoto(){
+  document.getElementById('em-photo').value='';
+  pendingEditMeasurePhoto=null;
+  renderEditMeasurePhotoUI('');
+}
+function previewEditMeasurePhoto(inp){
+  if(!inp.files[0])return;
+  pendingEditMeasurePhoto=inp.files[0];
+  const r=new FileReader();
+  r.onload=e=>{renderEditMeasurePhotoUI(e.target.result)};
+  r.readAsDataURL(inp.files[0]);
 }
 async function saveEditMeasure(){
   const id=document.getElementById('em-id').value;
@@ -1105,10 +1195,24 @@ async function saveEditMeasure(){
   if(isNaN(v)){toast('⚠️ Valeur invalide');return}
   const comment=document.getElementById('em-comment').value.trim();
   const m=measures.find(x=>x.id==id);if(!m)return;
-  const {error}=await sb.from('measures').update({value:v,comment}).eq('id',id);
+  let photoUrl=document.getElementById('em-photo').value;
+  if(pendingEditMeasurePhoto){
+    toast('📤 Envoi de la photo...');
+    photoUrl=await uploadPhoto(pendingEditMeasurePhoto,'measures');
+  }
+  const {error}=await sb.from('measures').update({value:v,comment,photo_url:photoUrl}).eq('id',id);
   if(error){console.error(error);toast('⚠️ Échec de la modification');return}
-  m.value=v;m.comment=comment;
+  m.value=v;m.comment=comment;m.photo=photoUrl;
+  pendingEditMeasurePhoto=null;
   closeModal('modal-edit-measure');renderHistory();toast('✓ Mesure modifiée');
+}
+function viewMeasurePhoto(id){
+  const m=measures.find(x=>x.id===id);if(!m||!m.photo)return;
+  const o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer';
+  const d=new Date(m.ts).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  o.innerHTML=`<img src="${m.photo}" style="max-width:100%;max-height:85vh;object-fit:contain"><div style="color:var(--t3);font-size:12px;margin-top:10px">${PC[m.param]?.label||m.param} · ${d}</div><div style="position:absolute;top:20px;right:20px;color:rgba(255,255,255,.6);font-size:28px">×</div>`;
+  o.onclick=()=>document.body.removeChild(o);document.body.appendChild(o);
 }
 async function delMeasure(id){
   if(!confirm('Supprimer cette mesure ?'))return;
