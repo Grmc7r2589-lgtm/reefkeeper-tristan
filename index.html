@@ -349,6 +349,9 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
       <div class="sh"><span class="shl">Aujourd'hui</span></div>
       <div class="gl" id="daily-checks"></div>
       <div id="weekly-section"></div>
+      <div class="sh"><span class="shl">Entretien — statistiques</span><span class="shr" onclick="toggleTaskHistoryView()" id="task-hist-toggle">Voir l'historique</span></div>
+      <div class="bg4" id="task-stats"></div>
+      <div class="gl" id="task-history-list" style="display:none"></div>
     </div>
 
     <!-- HISTORIQUE -->
@@ -685,8 +688,24 @@ const PHASES = [
    tips:['Maintenir la régularité','SPS possibles','Dosing automatique recommandé']}
 ];
 
-const DAILY_C = ['Température OK','Pompe de remontée fonctionnelle','Écumeur fonctionnel','ATO fonctionnel','Observer le bac 2 min','Profiter 😄'];
-const SUNDAY_C = ['Salinité (réfractomètre)','NH₃/NH₄ — Kit MCP','NO₂ — Kit MCP','NO₃ — Kit MCP','Journal ATO','Niveau réserve osmosée','Nettoyage vitres si besoin'];
+const DAILY_C = [
+  {key:'d_temp',label:'Température OK'},
+  {key:'d_pompe',label:'Pompe de remontée fonctionnelle'},
+  {key:'d_ecumeur',label:'Écumeur fonctionnel'},
+  {key:'d_ato',label:'ATO fonctionnel'},
+  {key:'d_observer',label:'Observer le bac 2 min'},
+  {key:'d_profiter',label:'Profiter 😄'}
+];
+const SUNDAY_C = [
+  {key:'w_salinite',label:'Salinité (réfractomètre)'},
+  {key:'w_nh3',label:'NH₃/NH₄ — Kit MCP'},
+  {key:'w_no2',label:'NO₂ — Kit MCP'},
+  {key:'w_no3',label:'NO₃ — Kit MCP'},
+  {key:'w_ato_journal',label:'Journal ATO'},
+  {key:'w_reserve',label:'Niveau réserve osmosée'},
+  {key:'w_vitres',label:'Nettoyage vitres si besoin'},
+  {key:'w_eau',label:"Changement d'eau"}
+];
 
 const TIPS_FISH = {
   'Premnas biaculeatus':{
@@ -757,7 +776,7 @@ const SUPABASE_KEY = 'sb_publishable_KXJwNbuk_zBmuacSGQjjhQ_T9HCZnBY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser=null; // sera rempli après connexion : { id, email }
-let measures=[], animals=[], corals=[], journal=[], equipment=[], gallery=[];
+let measures=[], animals=[], corals=[], journal=[], equipment=[], gallery=[], taskHistory=[];
 let dailyDone={}, weeklyDone={};
 let dbReady=false, dbError=false;
 
@@ -873,6 +892,123 @@ async function uploadPhoto(file, folder){
 // Purge les entrées de checklist (quotidienne/hebdo) de plus de 60 jours,
 // pour éviter que l'objet stocké dans Supabase ne grossisse indéfiniment.
 // S'exécute silencieusement, sauvegarde seulement si un nettoyage a eu lieu.
+// ═══════════════════════════════════════════
+// STATISTIQUES D'ENTRETIEN — basées sur task_history (permanent)
+// ═══════════════════════════════════════════
+
+// Série de jours consécutifs où TOUTES les tâches quotidiennes ont été cochées.
+// Le jour courant n'interrompt pas la série tant qu'il n'est pas terminé.
+function calcDailyStreak(){
+  const requiredKeys = DAILY_C.map(c=>c.key);
+  const byDate = {};
+  taskHistory.filter(t=>t.type==='daily').forEach(t=>{
+    if(!byDate[t.date]) byDate[t.date]=new Set();
+    byDate[t.date].add(t.key);
+  });
+  let streak=0;
+  let d=new Date(); d.setHours(0,0,0,0);
+  const todayStr=new Date().toISOString().slice(0,10);
+  while(true){
+    const dateStr=d.toISOString().slice(0,10);
+    const doneKeys=byDate[dateStr];
+    const allDone=doneKeys && requiredKeys.every(k=>doneKeys.has(k));
+    if(allDone){
+      streak++;
+      d.setDate(d.getDate()-1);
+    }else if(dateStr===todayStr){
+      d.setDate(d.getDate()-1); // jour en cours non terminé, on regarde hier
+    }else break;
+  }
+  return streak;
+}
+
+// Taux de réalisation sur une fenêtre de N jours : moyenne du % de tâches
+// quotidiennes cochées chaque jour (jours sans aucune mesure = 0%).
+function calcCompletionRate(days){
+  const requiredKeys = DAILY_C.map(c=>c.key);
+  const byDate = {};
+  taskHistory.filter(t=>t.type==='daily').forEach(t=>{
+    if(!byDate[t.date]) byDate[t.date]=new Set();
+    byDate[t.date].add(t.key);
+  });
+  let total=0;
+  for(let i=0;i<days;i++){
+    const d=new Date(Date.now()-i*86400000);
+    const dateStr=d.toISOString().slice(0,10);
+    const doneKeys=byDate[dateStr];
+    const pct = doneKeys ? (doneKeys.size/requiredKeys.length) : 0;
+    total += pct;
+  }
+  return Math.round((total/days)*100);
+}
+
+// Dernière occurrence + fréquence moyenne (en jours) d'une tâche précise,
+// basée sur son task_key (ex: 'w_eau' pour changement d'eau).
+function calcTaskFrequency(taskKey){
+  const entries = taskHistory.filter(t=>t.key===taskKey).sort((a,b)=>a.doneAt-b.doneAt);
+  if(!entries.length) return {lastDate:null, avgDays:null, count:0};
+  const lastDate = entries[entries.length-1].date;
+  if(entries.length<2) return {lastDate, avgDays:null, count:entries.length};
+  let totalGap=0;
+  for(let i=1;i<entries.length;i++){
+    totalGap += (entries[i].doneAt - entries[i-1].doneAt)/86400000;
+  }
+  return {lastDate, avgDays: Math.round(totalGap/(entries.length-1)), count:entries.length};
+}
+
+function renderTaskStats(){
+  const el=document.getElementById('task-stats');
+  if(!el)return;
+  const streak=calcDailyStreak();
+  const rate30=calcCompletionRate(30);
+  const waterChange=calcTaskFrequency('w_eau');
+  const cleaning=calcTaskFrequency('w_vitres');
+  const fmtFreq=(f)=>{
+    if(!f.count) return 'Jamais';
+    if(!f.avgDays) return `1 fois (${new Date(f.lastDate).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})})`;
+    return `Tous les ${f.avgDays}j env.`;
+  };
+  el.innerHTML=`
+    <div class="bx"><div class="bv t">${streak}j</div><div class="bl">Série en cours</div></div>
+    <div class="bx"><div class="bv b">${rate30}%</div><div class="bl">Taux 30j</div></div>
+    <div class="bx"><div class="bv a" style="font-size:14px">${fmtFreq(waterChange)}</div><div class="bl">Changement eau</div></div>
+    <div class="bx"><div class="bv a" style="font-size:14px">${fmtFreq(cleaning)}</div><div class="bl">Nettoyage vitres</div></div>`;
+}
+
+function toggleTaskHistoryView(){
+  const list=document.getElementById('task-history-list');
+  const btn=document.getElementById('task-hist-toggle');
+  const showing = list.style.display!=='none';
+  if(showing){
+    list.style.display='none';
+    btn.textContent="Voir l'historique";
+  }else{
+    list.style.display='';
+    btn.textContent='Masquer';
+    renderTaskHistoryList();
+  }
+}
+
+function renderTaskHistoryList(){
+  const el=document.getElementById('task-history-list');
+  if(!el)return;
+  if(!taskHistory.length){
+    el.innerHTML='<div class="emp" style="padding:14px 0"><div class="emp-t">Aucun historique pour l\'instant. Coche tes premières tâches !</div></div>';
+    return;
+  }
+  const sorted=[...taskHistory].sort((a,b)=>b.doneAt-a.doneAt).slice(0,100);
+  el.innerHTML = sorted.map(t=>{
+    const d=new Date(t.doneAt);
+    const dateStr=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const timeStr=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const badge = t.type==='daily' ? '<span class="diff diff-2" style="font-size:10px">Quotidien</span>' : '<span class="diff diff-1" style="font-size:10px">Dimanche</span>';
+    return `<div class="tr"><span style="color:var(--teal)">✓</span><span class="tl" style="margin-left:8px">${t.label}</span><span style="margin-right:8px">${badge}</span><span class="td2">${dateStr} ${timeStr}</span></div>`;
+  }).join('');
+  if(taskHistory.length>100){
+    el.innerHTML += `<div style="text-align:center;font-size:11px;color:var(--t4);padding:8px 0">100 entrées les plus récentes affichées sur ${taskHistory.length} au total</div>`;
+  }
+}
+
 function purgeOldChecklists(){
   const cutoff=Date.now()-60*86400000;
   let changed=false;
@@ -888,14 +1024,16 @@ function purgeOldChecklists(){
 async function loadAllData(){
   try{
     const oid=currentUser.id;
-    const [mR,aR,cR,jR,eR,gR,sR]=await Promise.all([
+    const oneYearAgo=new Date(Date.now()-365*86400000).toISOString().slice(0,10);
+    const [mR,aR,cR,jR,eR,gR,sR,tR]=await Promise.all([
       sb.from('measures').select('*').eq('owner_id',oid).order('ts',{ascending:true}),
       sb.from('animals').select('*').eq('owner_id',oid),
       sb.from('corals').select('*').eq('owner_id',oid),
       sb.from('journal_entries').select('*').eq('owner_id',oid).order('entry_date',{ascending:true}),
       sb.from('equipment').select('*').eq('owner_id',oid),
       sb.from('gallery_photos').select('*').eq('owner_id',oid),
-      sb.from('app_settings').select('*').eq('owner_id',oid).maybeSingle()
+      sb.from('app_settings').select('*').eq('owner_id',oid).maybeSingle(),
+      sb.from('task_history').select('*').eq('owner_id',oid).gte('task_date',oneYearAgo).order('task_date',{ascending:true})
     ]);
     if(mR.error) throw mR.error;
     measures = (mR.data||[]).map(m=>({id:m.id,param:m.param,value:parseFloat(m.value),ts:new Date(m.ts).getTime(),comment:m.comment||'',photo:m.photo_url||''}));
@@ -904,6 +1042,7 @@ async function loadAllData(){
     journal  = (jR.data||[]).map(j=>({id:j.id,date:j.entry_date,title:j.title,cat:j.category,note:j.note||'',photo:j.photo_url||''}));
     equipment= (eR.data||[]).map(e=>({id:e.id,emoji:e.emoji||'⚙️',name:e.name,detail:e.detail||'',price:parseFloat(e.price)||0,date:e.purchase_date||'',warranty:e.warranty_months||0}));
     gallery  = (gR.data||[]).map(p=>({id:p.id,src:p.photo_url,ts:new Date(p.taken_at).getTime(),name:p.caption||''}));
+    taskHistory = (tR.data||[]).map(t=>({id:t.id,type:t.task_type,key:t.task_key,label:t.task_label,date:t.task_date,doneAt:new Date(t.done_at).getTime()}));
     if(sR.data){ dailyDone=sR.data.daily_done||{}; weeklyDone=sR.data.weekly_done||{}; }
     purgeOldChecklists();
     dbReady=true;
@@ -1059,12 +1198,19 @@ function renderAquarium(){
   if(!dailyDone[today])dailyDone[today]={};
   document.getElementById('daily-checks').innerHTML=
     `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>`+
-    DAILY_C.map((c,i)=>`<div class="wc"><div class="wck ${dailyDone[today][i]?'dn':''}" onclick="togDC(${i},'${today}')">${dailyDone[today][i]?'✓':''}</div><span class="wcl ${dailyDone[today][i]?'dn':''}">${c}</span></div>`).join('');
+    DAILY_C.map(c=>`<div class="wc"><div class="wck ${dailyDone[today][c.key]?'dn':''}" onclick="togDC('${c.key}','${c.label}','${today}')">${dailyDone[today][c.key]?'✓':''}</div><span class="wcl ${dailyDone[today][c.key]?'dn':''}">${c.label}</span></div>`).join('');
 
   renderWeeklySection();
+  renderTaskStats();
   renderMenuTests();
 }
-function togDC(i,d){dailyDone[d][i]=!dailyDone[d][i];saveSettings();renderAquarium()}
+function togDC(key,label,d){
+  const wasUnchecked=!dailyDone[d][key];
+  dailyDone[d][key]=!dailyDone[d][key];
+  saveSettings();
+  if(wasUnchecked) logTaskHistory('daily',key,label); // ne loggue qu'à la coche, pas au décochage
+  renderAquarium();
+}
 
 // Tâches du dimanche : visibles uniquement le dimanche (getDay()===0),
 // remise à zéro automatique chaque nouveau dimanche (clé = date du jour).
@@ -1078,10 +1224,39 @@ function renderWeeklySection(){
   el.innerHTML = `
     <div class="sh"><span class="shl">Contrôle du dimanche</span></div>
     <div class="gl">
-      ${SUNDAY_C.map((c,i)=>`<div class="wc"><div class="wck ${weeklyDone[wk][i]?'dn':''}" onclick="togWC(${i},'${wk}')">${weeklyDone[wk][i]?'✓':''}</div><span class="wcl ${weeklyDone[wk][i]?'dn':''}">${c}</span></div>`).join('')}
+      ${SUNDAY_C.map(c=>`<div class="wc"><div class="wck ${weeklyDone[wk][c.key]?'dn':''}" onclick="togWC('${c.key}','${c.label}','${wk}')">${weeklyDone[wk][c.key]?'✓':''}</div><span class="wcl ${weeklyDone[wk][c.key]?'dn':''}">${c.label}</span></div>`).join('')}
     </div>`;
 }
-function togWC(i,wk){weeklyDone[wk][i]=!weeklyDone[wk][i];saveSettings();renderWeeklySection()}
+function togWC(key,label,wk){
+  const wasUnchecked=!weeklyDone[wk][key];
+  weeklyDone[wk][key]=!weeklyDone[wk][key];
+  saveSettings();
+  if(wasUnchecked) logTaskHistory('weekly',key,label);
+  renderWeeklySection();
+  renderTaskStats();
+}
+
+// Enregistre une coche dans l'historique permanent (table task_history).
+// N'affecte jamais l'UI immédiate (déjà gérée par dailyDone/weeklyDone) —
+// sert uniquement à construire les statistiques plus tard.
+async function logTaskHistory(taskType, taskKey, taskLabel){
+  try{
+    const nowIso=new Date().toISOString();
+    const {data,error}=await sb.from('task_history').insert({
+      owner_id: currentUser.id,
+      task_type: taskType,
+      task_key: taskKey,
+      task_label: taskLabel,
+      task_date: nowIso.slice(0,10),
+      done_at: nowIso
+    }).select().single();
+    if(error){ console.error('Erreur enregistrement historique tâche:', error); return; }
+    taskHistory.push({id:data.id,type:taskType,key:taskKey,label:taskLabel,date:data.task_date,doneAt:new Date(data.done_at).getTime()});
+    renderTaskStats();
+  }catch(err){
+    console.error('Erreur enregistrement historique tâche:', err);
+  }
+}
 
 // ═══════════════════════════════════════════
 // MESURE
