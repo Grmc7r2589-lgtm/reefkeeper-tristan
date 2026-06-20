@@ -1791,46 +1791,6 @@ function evaluateSpecies(sp, days, ownedKw){
   return {status, reasons, alreadyOwned};
 }
 
-// Cache mémoire pour éviter de réinterroger Wikipedia à chaque ouverture
-// de la page Découvertes pendant la même session.
-const speciesImgCache={};
-
-// Récupère la photo d'illustration d'une espèce depuis l'API publique
-// Wikipedia (gratuite, pas de clé requise, photos sous licence libre).
-// En cas d'échec (pas de page, pas d'image, réseau indisponible), l'emoji
-// déjà affiché reste simplement en place — aucune dégradation visuelle.
-async function loadSpeciesImage(sp){
-  const imgId='dec-img-'+sp.sci.replace(/[^a-zA-Z0-9]/g,'');
-  const el=document.getElementById(imgId);
-  if(!el)return;
-  if(speciesImgCache[sp.sci]!==undefined){
-    if(speciesImgCache[sp.sci]) applySpeciesImage(el, speciesImgCache[sp.sci]);
-    return;
-  }
-  const articleName=sp.sci.replace(/ /g,'_');
-  const imgUrl = await fetchWikiThumbnail('en', articleName) || await fetchWikiThumbnail('fr', articleName);
-  speciesImgCache[sp.sci]=imgUrl;
-  if(imgUrl) applySpeciesImage(el, imgUrl);
-}
-async function fetchWikiThumbnail(lang, articleName){
-  try{
-    const resp=await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(articleName)}`);
-    if(!resp.ok) return null;
-    const data=await resp.json();
-    return data.thumbnail?.source || data.originalimage?.source || null;
-  }catch(err){
-    return null;
-  }
-}
-function applySpeciesImage(el, url){
-  const img=new Image();
-  img.onload=()=>{
-    el.style.fontSize='';
-    el.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
-  };
-  img.src=url;
-}
-
 function renderDec(){
   const days=daysFromStart();
   const phase=getPhase();
@@ -1854,11 +1814,11 @@ function renderDec(){
         : ev.status==='soon'
         ? '<span class="cbadge b-plan">⏳ Bientôt possible</span>'
         : '<span class="cbadge b-de">🚫 Non recommandé</span>';
-      const imgId = 'dec-img-' + sp.sci.replace(/[^a-zA-Z0-9]/g,'');
-      return `<div class="dc" style="${ev.status==='blocked'?'opacity:.6':''};padding:0;overflow:hidden">
-        <div style="width:100%;height:140px;background:linear-gradient(135deg,var(--bg2),var(--bg3));position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:48px" id="${imgId}">${sp.emoji}</div>
-        <div style="padding:13px">
-        <div class="dc-top" style="margin-bottom:0">
+      const fishipediaSlug = sp.sci.toLowerCase().replace(/\s+/g,'-');
+      const fishipediaUrl = `https://www.fishipedia.fr/fr/poissons/${fishipediaSlug}`;
+      return `<div class="dc" style="${ev.status==='blocked'?'opacity:.6':''}">
+        <div class="dc-top">
+          <div class="dc-ico">${sp.emoji}</div>
           <div>
             <div class="dc-n">${sp.name}</div>
             <div class="dc-s">${sp.sci}</div>
@@ -1873,7 +1833,7 @@ function renderDec(){
         </div>
         ${sp.compat?`<div style="font-size:11px;color:var(--t4);margin-top:4px">💡 ${sp.compat}</div>`:''}
         ${ev.reasons.length?`<div style="font-size:11px;color:${ev.status==='blocked'?'var(--red)':'var(--amber)'};margin-top:5px">⚠️ ${ev.reasons.join(' · ')}</div>`:''}
-        </div>
+        <a href="${fishipediaUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--o3);margin-top:8px;text-decoration:none">🔗 Voir la fiche sur Fishipedia</a>
       </div>`;
     }).join('');
   }
@@ -1887,10 +1847,6 @@ function renderDec(){
   document.getElementById('dec-fish').innerHTML=dcH(SPECIES_DB.fish);
   document.getElementById('dec-coral').innerHTML=dcH(SPECIES_DB.coral);
   document.getElementById('dec-inv').innerHTML=dcH(SPECIES_DB.inv);
-
-  // Charge les photos réelles depuis Wikipedia en arrière-plan (asynchrone,
-  // n'empêche jamais l'affichage : emoji visible immédiatement, photo en bonus).
-  [...SPECIES_DB.fish, ...SPECIES_DB.coral, ...SPECIES_DB.inv].forEach(sp=>loadSpeciesImage(sp));
 }
 
 // ═══════════════════════════════════════════
