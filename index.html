@@ -748,23 +748,23 @@ const CORAL_TIPS = {
 // territorial = true si l'espèce défend un territoire (limite le nombre de congénères/similaires).
 const SPECIES_DB = {
   fish:[
-    {emoji:'🐠',name:'Clown Maroon Gold Stripe',sci:'Premnas biaculeatus',diff:2,minDays:60,minVol:200,tips:'Robuste, excellent débutant. Idéal avec une anémone Radianthus.',compat:'Hôte naturel : Radianthus malu.',incompatWith:['biaculeatus','clownfish','amphiprion'],territorial:true},
-    {emoji:'🐡',name:'Dartfish Décoré',sci:'Nemateleotris decora',diff:2,minDays:60,minVol:100,tips:'Paisible, nage élégante. Couvercle de bac obligatoire (sauteur).',compat:'Très pacifique, évite les poissons agressifs.',incompatWith:[],territorial:false},
-    {emoji:'🐟',name:'Centropyge bispinosus',sci:'Centropyge bispinosus',diff:2,minDays:90,minVol:150,tips:'Poisson-ange nain coloré. Peut grignoter coraux mous et LPS.',compat:'Attention avec les coraux mous déjà en place.',incompatWith:['centropyge'],territorial:true},
-    {emoji:'🦈',name:'Ecsenius bicolor',sci:'Ecsenius bicolor',diff:1,minDays:30,minVol:80,tips:'Blenny herbivore, mange les algues. Très facile.',compat:'Excellent avec presque toutes les espèces.',incompatWith:[],territorial:false},
-    {emoji:'🐟',name:'Chromis viridis',sci:'Chromis viridis',diff:1,minDays:30,minVol:100,tips:'Poisson de banc paisible, idéal pour débuter en groupe.',compat:'Vit en banc, prévoir plusieurs individus.',incompatWith:[],territorial:false}
+    {emoji:'🐠',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Premnas_biaculeatus_2.jpg/400px-Premnas_biaculeatus_2.jpg',name:'Clown Maroon Gold Stripe',sci:'Premnas biaculeatus',diff:2,minDays:60,minVol:200,tips:'Robuste, excellent débutant. Idéal avec une anémone Radianthus.',compat:'Hôte naturel : Radianthus malu.',incompatWith:['biaculeatus','clownfish','amphiprion'],territorial:true},
+    {emoji:'🐡',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Nemateleotris_decora.jpg/400px-Nemateleotris_decora.jpg',name:'Dartfish Décoré',sci:'Nemateleotris decora',diff:2,minDays:60,minVol:100,tips:'Paisible, nage élégante. Couvercle de bac obligatoire (sauteur).',compat:'Très pacifique, évite les poissons agressifs.',incompatWith:[],territorial:false},
+    {emoji:'🐟',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Centropyge_bispinosa.jpg/400px-Centropyge_bispinosa.jpg',name:'Centropyge bispinosus',sci:'Centropyge bispinosus',diff:2,minDays:90,minVol:150,tips:'Poisson-ange nain coloré. Peut grignoter coraux mous et LPS.',compat:'Attention avec les coraux mous déjà en place.',incompatWith:['centropyge'],territorial:true},
+    {emoji:'🦈',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Ecsenius_bicolor.jpg/400px-Ecsenius_bicolor.jpg',name:'Ecsenius bicolor',sci:'Ecsenius bicolor',diff:1,minDays:30,minVol:80,tips:'Blenny herbivore, mange les algues. Très facile.',compat:'Excellent avec presque toutes les espèces.',incompatWith:[],territorial:false},
+    {emoji:'🐟',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Chromis_viridis_2.jpg/400px-Chromis_viridis_2.jpg',name:'Chromis viridis',sci:'Chromis viridis',diff:1,minDays:30,minVol:100,tips:'Poisson de banc paisible, idéal pour débuter en groupe.',compat:'Vit en banc, prévoir plusieurs individus.',incompatWith:[],territorial:false}
   ],
   coral:[
-    {emoji:'⚪',name:'Zoanthus / Palythoa',sci:'Zoanthus sp.',diff:1,minDays:35,minVol:50,tips:'Premier corail idéal. Robuste, coloré, croissance rapide.',compat:'Compatible avec presque tout type.',incompatWith:[],territorial:false},
-    {emoji:'🌿',name:'Clavularia vert',sci:'Clavularia viridis',diff:1,minDays:35,minVol:50,tips:'Corail mou très facile. Croissance rapide, peut envahir.',compat:'Éloigner des SPS (peut les irriter en poussant).',incompatWith:['sps'],territorial:false},
-    {emoji:'🔨',name:'Hammer Coral',sci:'Euphyllia ancora',diff:2,minDays:60,minVol:150,tips:"LPS spectaculaire. Demande de l'espace autour de lui.",compat:'Tentacules urticants — espacer des autres LPS de 15cm+.',incompatWith:['lps','euphyllia'],territorial:true},
-    {emoji:'🪸',name:'Chalice',sci:'Echinophyllia sp.',diff:3,minDays:90,minVol:150,tips:'Coloration unique. Lumière modérée, courant faible.',compat:'Bon voisinage avec les autres LPS calmes.',incompatWith:[],territorial:false}
+    {emoji:'⚪',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Zoanthus_sp.jpg/400px-Zoanthus_sp.jpg',name:'Zoanthus / Palythoa',sci:'Zoanthus sp.',diff:1,minDays:35,minVol:50,tips:'Premier corail idéal. Robuste, coloré, croissance rapide.',compat:'Compatible avec presque tout type.',incompatWith:[],territorial:false},
+    {emoji:'🌿',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Clavularia_sp.jpg/400px-Clavularia_sp.jpg',name:'Clavularia vert',sci:'Clavularia viridis',diff:1,minDays:35,minVol:50,tips:'Corail mou très facile. Croissance rapide, peut envahir.',compat:'Éloigner des SPS (peut les irriter en poussant).',incompatWith:['sps'],territorial:false},
+    {emoji:'🔨',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Euphyllia_ancora.jpg/400px-Euphyllia_ancora.jpg',name:'Hammer Coral',sci:'Euphyllia ancora',diff:2,minDays:60,minVol:150,tips:"LPS spectaculaire. Demande de l'espace autour de lui.",compat:'Tentacules urticants — espacer des autres LPS de 15cm+.',incompatWith:['lps','euphyllia'],territorial:true},
+    {emoji:'🪸',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Echinophyllia_sp.jpg/400px-Echinophyllia_sp.jpg',name:'Chalice',sci:'Echinophyllia sp.',diff:3,minDays:90,minVol:150,tips:'Coloration unique. Lumière modérée, courant faible.',compat:'Bon voisinage avec les autres LPS calmes.',incompatWith:[],territorial:false}
   ],
   inv:[
-    {emoji:'🐌',name:'Escargots Turbo',sci:'Turbo sp.',diff:1,minDays:21,minVol:50,tips:"Excellent nettoyeur d'algues. Quasi indispensable.",compat:'Parfait avec toutes les espèces.',incompatWith:[],territorial:false},
-    {emoji:'🦔',name:'Oursin Mespilia',sci:'Mespilia globulus',diff:1,minDays:21,minVol:100,tips:'Mange les algues, très actif la nuit.',compat:'Éviter avec les étoiles de mer prédatrices.',incompatWith:['starfish'],territorial:false},
-    {emoji:'🦐',name:'Crevette Lysmata',sci:'Lysmata amboinensis',diff:1,minDays:45,minVol:80,tips:'Crevette nettoyeuse, retire les parasites des poissons.',compat:'Éviter avec les poissons-globes (Canthigaster).',incompatWith:['canthigaster','toby'],territorial:false},
-    {emoji:'🌺',name:'Sabelle',sci:'Sabellastarte sp.',diff:2,minDays:60,minVol:100,tips:'Ver tubicole filtreur. Esthétique mais fragile.',compat:'Éviter les poissons piqueurs/becs (Canthigaster).',incompatWith:['canthigaster','toby','piqueur'],territorial:false}
+    {emoji:'🐌',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Turbo_snail.jpg/400px-Turbo_snail.jpg',name:'Escargots Turbo',sci:'Turbo sp.',diff:1,minDays:21,minVol:50,tips:"Excellent nettoyeur d'algues. Quasi indispensable.",compat:'Parfait avec toutes les espèces.',incompatWith:[],territorial:false},
+    {emoji:'🦔',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Mespilia_globulus.jpg/400px-Mespilia_globulus.jpg',name:'Oursin Mespilia',sci:'Mespilia globulus',diff:1,minDays:21,minVol:100,tips:'Mange les algues, très actif la nuit.',compat:'Éviter avec les étoiles de mer prédatrices.',incompatWith:['starfish'],territorial:false},
+    {emoji:'🦐',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Lysmata_amboinensis_1.jpg/400px-Lysmata_amboinensis_1.jpg',name:'Crevette Lysmata',sci:'Lysmata amboinensis',diff:1,minDays:45,minVol:80,tips:'Crevette nettoyeuse, retire les parasites des poissons.',compat:'Éviter avec les poissons-globes (Canthigaster).',incompatWith:['canthigaster','toby'],territorial:false},
+    {emoji:'🌺',img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Sabellastarte_sp.jpg/400px-Sabellastarte_sp.jpg',name:'Sabelle',sci:'Sabellastarte sp.',diff:2,minDays:60,minVol:100,tips:'Ver tubicole filtreur. Esthétique mais fragile.',compat:'Éviter les poissons piqueurs/becs (Canthigaster).',incompatWith:['canthigaster','toby','piqueur'],territorial:false}
   ]
 };
 
@@ -886,6 +886,50 @@ async function uploadPhoto(file, folder){
   }
   const {data}=sb.storage.from('reefkeeper-photos').getPublicUrl(path);
   return data.publicUrl;
+}
+
+// Galerie de photos liées à un animal ou corail (suivi de croissance / multi-photos).
+// Réutilise la table gallery_photos avec linked_type + linked_id.
+async function renderLinkedGallery(linkedType, linkedId){
+  const el=document.getElementById('linked-gallery');
+  if(!el)return;
+  el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:10px;color:var(--t4);font-size:12px">Chargement...</div>';
+  try{
+    const {data,error}=await sb.from('gallery_photos').select('*').eq('linked_type',linkedType).eq('linked_id',linkedId).order('taken_at',{ascending:false});
+    if(error)throw error;
+    if(!data||!data.length){
+      el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:10px;color:var(--t4);font-size:12px">Aucune photo. Ajoute la première !</div>';
+      return;
+    }
+    el.innerHTML=data.map(p=>`<div class="gc"><img src="${p.photo_url}" loading="lazy" onclick="viewLinkedPhoto('${p.photo_url}')"><div class="gc-del" onclick="delLinkedPhoto('${p.id}','${linkedType}','${linkedId}')">×</div></div>`).join('');
+  }catch(err){
+    console.error('Erreur chargement galerie liée:', err);
+    el.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:10px;color:var(--red);font-size:12px">Erreur de chargement</div>';
+  }
+}
+async function addLinkedPhoto(inp, linkedType, linkedId){
+  if(!inp.files[0])return;
+  toast('📤 Envoi de la photo...');
+  const url=await uploadPhoto(inp.files[0], linkedType==='animal'?'animals':'corals');
+  if(!url)return;
+  const {error}=await sb.from('gallery_photos').insert({owner_id:currentUser.id,photo_url:url,linked_type:linkedType,linked_id:linkedId,taken_at:new Date().toISOString()});
+  if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+  inp.value='';
+  renderLinkedGallery(linkedType, linkedId);
+  toast('✓ Photo ajoutée');
+}
+async function delLinkedPhoto(photoId, linkedType, linkedId){
+  if(!confirm('Supprimer cette photo ?'))return;
+  const {error}=await sb.from('gallery_photos').delete().eq('id',photoId);
+  if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  renderLinkedGallery(linkedType, linkedId);
+  toast('Photo supprimée');
+}
+function viewLinkedPhoto(url){
+  const o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:600;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  o.innerHTML=`<img src="${url}" style="max-width:100%;max-height:90vh;object-fit:contain"><div style="position:absolute;top:20px;right:20px;color:rgba(255,255,255,.6);font-size:28px">×</div>`;
+  o.onclick=()=>document.body.removeChild(o);document.body.appendChild(o);
 }
 
 
@@ -1460,8 +1504,11 @@ function openCreature(id){
     <div class="tip" style="opacity:.4"><div class="tip-h">💡 Aperçu</div><div class="tip-li">${tips.care[0]}</div><div class="tip-li" style="color:var(--t4)">… fiche complète après introduction</div></div>
     `}
     ${a.notes?`<div class="gls" style="margin-top:10px"><div style="font-size:11px;color:var(--t3);margin-bottom:3px">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5">${a.notes}</div></div>`:''}
+    <div class="sh" style="margin:14px 0 8px"><span class="shl">Galerie photos</span><label style="font-size:13px;color:var(--o3);cursor:pointer">+ Ajouter<input type="file" accept="image/*" style="display:none" onchange="addLinkedPhoto(this,'animal','${id}')"></label></div>
+    <div class="gg" id="linked-gallery" style="margin-bottom:10px"></div>
     <button class="btn btn-g" style="width:100%;margin-top:12px" onclick="closeModal('modal-creature')">Fermer</button>`;
   openModal('modal-creature');
+  renderLinkedGallery('animal',id);
 }
 async function moveAnimal(id,status){
   const a=animals.find(x=>x.id===id);if(!a)return;
@@ -1568,8 +1615,11 @@ function openCoral(id){
     `}
     ${c.location?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">📍 Emplacement</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${c.location}</div></div>`:''}
     ${c.notes?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5;margin-top:2px">${c.notes}</div></div>`:''}
+    <div class="sh" style="margin:14px 0 8px"><span class="shl">Suivi de croissance</span><label style="font-size:13px;color:var(--o3);cursor:pointer">+ Ajouter<input type="file" accept="image/*" style="display:none" onchange="addLinkedPhoto(this,'coral','${id}')"></label></div>
+    <div class="gg" id="linked-gallery" style="margin-bottom:10px"></div>
     <button class="btn btn-g" style="width:100%;margin-top:12px" onclick="closeModal('modal-creature')">Fermer</button>`;
   openModal('modal-creature');
+  renderLinkedGallery('coral',id);
 }
 async function moveCoral(id,status){
   const c=corals.find(x=>x.id===id);if(!c)return;
@@ -1764,9 +1814,13 @@ function renderDec(){
         : ev.status==='soon'
         ? '<span class="cbadge b-plan">⏳ Bientôt possible</span>'
         : '<span class="cbadge b-de">🚫 Non recommandé</span>';
-      return `<div class="dc" style="${ev.status==='blocked'?'opacity:.6':''}">
-        <div class="dc-top">
-          <div class="dc-ico">${sp.emoji}</div>
+      return `<div class="dc" style="${ev.status==='blocked'?'opacity:.6':''};padding:0;overflow:hidden">
+        <div style="width:100%;height:140px;background:var(--bg2);position:relative;overflow:hidden">
+          <img src="${sp.img}" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:48px;position:absolute;inset:0;background:linear-gradient(135deg,var(--bg2),var(--bg3))">${sp.emoji}</div>
+        </div>
+        <div style="padding:13px">
+        <div class="dc-top" style="margin-bottom:0">
           <div>
             <div class="dc-n">${sp.name}</div>
             <div class="dc-s">${sp.sci}</div>
@@ -1781,6 +1835,7 @@ function renderDec(){
         </div>
         ${sp.compat?`<div style="font-size:11px;color:var(--t4);margin-top:4px">💡 ${sp.compat}</div>`:''}
         ${ev.reasons.length?`<div style="font-size:11px;color:${ev.status==='blocked'?'var(--red)':'var(--amber)'};margin-top:5px">⚠️ ${ev.reasons.join(' · ')}</div>`:''}
+        </div>
       </div>`;
     }).join('');
   }
