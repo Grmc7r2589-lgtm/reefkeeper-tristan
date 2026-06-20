@@ -294,7 +294,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 
   <!-- SIDE MENU -->
   <div id="sm">
-    <div class="sm-hd">
+    <div class="sm-hd" onclick="nav('aquarium')" style="cursor:pointer">
       <div class="sm-title">🐠 ReefKeeper Tristan</div>
       <div class="sm-sub">Reefer 300 XL G3 · Depuis le 8 juin 2026</div>
     </div>
@@ -1358,7 +1358,7 @@ function renderCoraux(){
   const tank=corals.filter(c=>c.status==='tank');
   const plan=corals.filter(c=>c.status==='planned');
   const tl={lps:'LPS',sps:'SPS',soft:'Mou',nem:'Anémone',autre:'Autre'};
-  const cH=arr=>arr.length?arr.map(c=>'<div class="cc" onclick="openCoral(\'"+c.id+"\')">'+'<div class="ca '+(c.status==='tank'?'it':'pl')+'">'+(c.photo?'<img src="'+c.photo+'">':(c.emoji||'🪸'))+'</div>'+'<div class="ci"><div class="cn">'+c.name+'</div><div class="cs">'+(tl[c.type]||c.type)+(c.location?' · '+c.location:'')+'</div>'+'<span class="cbadge '+(c.status==='tank'?'b-it':'b-pl')+'">'+(c.status==='tank'?'✅ Dans le bac':'⏳ Prévu')+'</span></div><div class="cc-ch">›</div></div>').join(''):
+  const cH=arr=>arr.length?arr.map(c=>`<div class="cc" onclick="openCoral('${c.id}')"><div class="ca ${c.status==='tank'?'it':'pl'}">${c.photo?`<img src="${c.photo}">`:(c.emoji||'🪸')}</div><div class="ci"><div class="cn">${c.name}</div><div class="cs">${tl[c.type]||c.type}${c.location?' · '+c.location:''}</div><span class="cbadge ${c.status==='tank'?'b-it':'b-pl'}">${c.status==='tank'?'✅ Dans le bac':'⏳ Prévu'}</span></div><div class="cc-ch">›</div></div>`).join(''):
     '<div class="emp" style="padding:14px 0"><div class="emp-t">Aucun corail.</div></div>';
   el.innerHTML=cH([...tank,...plan]);
 }
