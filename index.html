@@ -2245,6 +2245,7 @@ function renderSwipeZone(){
 
 // ── Grille "Tout découvrir" : parcourir toute la bibliothèque sans swiper ──
 const DISC_CATS=[{key:'fish',label:'🐟 Poissons'},{key:'coral',label:'🪸 Coraux'},{key:'inv',label:'🦐 Invertébrés'}];
+function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 
 function renderDiscoveryGrid(){
   const zone=document.getElementById('disc-grid-zone');
@@ -2263,7 +2264,7 @@ function renderDiscoveryGrid(){
       const photoContent = sp.photo ? `<img src="${sp.photo}" loading="lazy">` : sp.emoji;
       const isAdopted = speciesDecisions[sp.sci]==='adopted';
       html+=`<div class="disc-tile">
-        <div class="disc-star ${isAdopted?'is-on':''}" onclick="discToggleStar(event,'${sp.sci}')">${isAdopted?'⭐':'☆'}</div>
+        <div class="disc-star ${isAdopted?'is-on':''}" data-sci="${escAttr(sp.sci)}" onclick="discToggleStar(event,this.dataset.sci)">${isAdopted?'⭐':'☆'}</div>
         <div class="disc-tile-img">${photoContent}</div>
         <div class="disc-tile-body">
           <div class="disc-tile-name">${sp.name}</div>
