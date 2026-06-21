@@ -1666,10 +1666,7 @@ function openCoral(id){
   // Même priorité que pour les animaux : photo perso > photo catalogue (matché par nom) > emoji
   let imgSrc=c.photo;
   if(!imgSrc && c.name){
-    const match=SPECIES_DB.coral.find(sp=>{
-      const a=sp.name.toLowerCase(), b=c.name.toLowerCase();
-      return a===b || b.includes(a) || a.includes(b);
-    });
+    const match=SPECIES_DB.coral.find(sp=>matchCoralName(sp.name, c.name));
     if(match && match.photo) imgSrc=match.photo;
   }
   const photoBanner = imgSrc
@@ -1780,10 +1777,7 @@ function renderCoraux(){
   const cH=arr=>arr.length?arr.map(c=>{
     let imgSrc=c.photo;
     if(!imgSrc && c.name){
-      const match=SPECIES_DB.coral.find(sp=>{
-        const a=sp.name.toLowerCase(), b=c.name.toLowerCase();
-        return a===b || b.includes(a) || a.includes(b);
-      });
+      const match=SPECIES_DB.coral.find(sp=>matchCoralName(sp.name, c.name));
       if(match && match.photo) imgSrc=match.photo;
     }
     return `<div class="cc" onclick="openCoral('${c.id}')"><div class="ca ${c.status==='tank'?'it':'pl'}">${imgSrc?`<img src="${imgSrc}">`:(c.emoji||'🪸')}</div><div class="ci"><div class="cn">${c.name}</div><div class="cs">${tl[c.type]||c.type}${c.location?' · '+c.location:''}</div><span class="cbadge ${c.status==='tank'?'b-it':'b-pl'}">${c.status==='tank'?'✅ Dans le bac':'⏳ Prévu'}</span></div><div class="cc-ch">›</div></div>`;
@@ -1858,6 +1852,18 @@ async function delJournal(id){
 // volume, âge, phase, espèces déjà présentes ou prévues.
 // ═══════════════════════════════════════════
 const TANK_VOLUME = 300; // Reefer 300 XL G3, volume net en litres
+
+// Compare le nom d'une espèce du catalogue avec le nom personnalisé d'un
+// corail perso (ex: "Hammer Coral" vs "Colonie Rainbow Hammer"). Cherche
+// d'abord une égalité ou inclusion directe, puis un mot significatif commun
+// (4+ lettres) pour matcher les noms commerciaux très différents.
+function matchCoralName(speciesName, coralName){
+  const a=speciesName.toLowerCase(), b=coralName.toLowerCase();
+  if(a===b || b.includes(a) || a.includes(b)) return true;
+  const wordsA=a.split(/[\s/]+/).filter(w=>w.length>3);
+  const wordsB=b.split(/[\s/]+/).filter(w=>w.length>3);
+  return wordsA.some(w=>wordsB.includes(w));
+}
 
 function getOwnedKeywords(){
   // Construit la liste de mots-clés (genre/espèce/famille) déjà présents
