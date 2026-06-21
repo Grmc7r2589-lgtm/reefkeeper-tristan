@@ -676,6 +676,10 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
   </div>
 </div>
 
+<div class="mo" id="modal-param-guidance">
+  <div class="mdl" id="pgm-content"></div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════
 // CONFIG
@@ -692,6 +696,121 @@ const PC = {
   mg:  {label:'Magnésium',unit:'mg/L',target:1350,min:1250,max:1400,kit:'Kit Pro Multi'},
   po4: {label:'PO₄',unit:'mg/L',target:0.05,min:0.02,max:0.10,kit:''}
 };
+
+// Explications pédagogiques par paramètre : pourquoi ça compte, causes
+// probables si trop bas/trop haut, action recommandée. La fonction
+// getParamGuidance() ci-dessous y ajoute une nuance selon l'âge du bac.
+const PARAM_GUIDANCE = {
+  temp:{
+    why:"La température conditionne le métabolisme de tous les organismes du bac. Trop de variation stresse poissons et coraux.",
+    low:"Une température basse peut venir d'un chauffage sous-dimensionné, d'une panne, ou d'une pièce froide.",
+    high:"Une température haute vient souvent d'une pompe qui chauffe l'eau, d'un éclairage trop proche, ou d'une chaleur ambiante.",
+    action:"Vérifie le chauffage et son réglage. Une variation de plus de 1°C par jour est plus problématique que la valeur absolue."
+  },
+  sal:{
+    why:"La salinité doit rester stable : poissons et invertébrés osmorégulent difficilement de fortes variations.",
+    low:"Une salinité basse vient souvent d'un ajout d'eau douce (ATO) mal calibré ou trop fréquent.",
+    high:"Une salinité haute vient généralement d'une évaporation non compensée, fréquente en été ou avec un éclairage puissant.",
+    action:"Corrige progressivement (max 0.001 par jour) avec de l'eau osmosée pure, jamais d'un coup."
+  },
+  ph:{
+    why:"Le pH influence la dissolution du calcium et la santé des coraux. Il varie naturellement entre jour et nuit (photosynthèse).",
+    low:"Un pH bas peut indiquer un manque de brassage en surface, un excès de CO2, ou un KH trop faible.",
+    high:"Un pH haut est rare en aquarium marin, souvent lié à un excès d'aération ou un dosage de KH trop agressif.",
+    action:"Mesure toujours à la même heure pour comparer (le pH varie naturellement de 0.2-0.3 entre jour et nuit)."
+  },
+  kh:{
+    why:"Le KH (alcalinité) est la réserve tampon qui stabilise le pH et fournit les carbonates aux coraux durs.",
+    low:"Un KH bas est très courant : les coraux et la précipitation naturelle de calcaire le consomment en continu.",
+    high:"Un KH haut vient généralement d'un surdosage de produit correcteur.",
+    action:"Le KH doit être corrigé en douceur (max 1 dKH par jour) avec un produit dédié, jamais en une fois."
+  },
+  no3:{
+    why:"Le NO₃ (nitrate) est le produit final du cycle de l'azote. Un excès nourrit les algues, un manque peut affamer les coraux.",
+    low:"Un NO₃ très bas (proche de 0) dans un bac jeune n'est pas anormal — le cycle de l'azote n'est pas encore pleinement établi.",
+    high:"Un NO₃ élevé vient souvent d'une suralimentation, d'un manque d'écumage, ou d'un changement d'eau trop espacé.",
+    action:"Si élevé : vérifie l'écumeur, réduis la nourriture, envisage un changement d'eau partiel."
+  },
+  no2:{
+    why:"Le NO₂ (nitrite) est toxique même à faible dose. Sa présence signale un cycle de l'azote pas totalement établi.",
+    low:"Un NO₂ à 0 est l'objectif normal une fois le bac cyclé.",
+    high:"Un NO₂ détectable indique souvent un bac encore en cours de cyclage, ou une surcharge organique récente (mort d'un organisme, suralimentation).",
+    action:"Si détecté en dehors du cyclage initial : ne rien ajouter de vivant, vérifie qu'aucun organisme n'est mort caché dans le décor."
+  },
+  nh3:{
+    why:"L'ammoniaque (NH₃/NH₄) est extrêmement toxique. C'est le tout premier maillon du cycle de l'azote.",
+    low:"Un NH₃ à 0 est l'objectif normal une fois le bac cyclé.",
+    high:"Un NH₃ détectable signale souvent un bac en cours de cyclage, une suralimentation, ou un organisme mort non retiré.",
+    action:"Si détecté : vérifie immédiatement l'absence d'organisme mort, réduis la nourriture, ne rien ajouter de vivant tant que ce n'est pas revenu à 0."
+  },
+  ca:{
+    why:"Le calcium est le bloc de construction principal du squelette des coraux durs et de certains invertébrés.",
+    low:"Un calcium bas s'observe surtout en bac avec coraux durs déjà établis qui le consomment activement.",
+    high:"Un calcium haut vient généralement d'un surdosage de complément.",
+    action:"Le calcium et le KH sont liés : les corriger ensemble dans les bonnes proportions évite les déséquilibres."
+  },
+  mg:{
+    why:"Le magnésium stabilise l'équilibre calcium/KH et empêche les précipitations indésirables.",
+    low:"Un magnésium bas peut bloquer la capacité à maintenir KH et calcium dans leurs plages cibles.",
+    high:"Un magnésium haut vient généralement d'un surdosage, rarement problématique en soi.",
+    action:"Si KH et Ca sont difficiles à stabiliser malgré des dosages corrects, vérifie le magnésium en premier."
+  },
+  po4:{
+    why:"Le PO₄ (phosphate) nourrit les algues en excès, mais un manque total peut aussi nuire à la coloration des coraux.",
+    low:"Un PO₄ très bas (proche de 0) dans un bac jeune n'est pas anormal — il n'y a pas encore beaucoup de matière organique en décomposition.",
+    high:"Un PO₄ élevé vient souvent d'une suralimentation, d'un substrat qui en relargue, ou d'une eau d'osmose mal filtrée.",
+    action:"Si élevé : vérifie la qualité de ton eau osmosée (TDS-mètre), réduis la nourriture, un média anti-phosphate peut aider."
+  }
+};
+
+// Construit le texte d'accompagnement complet pour un paramètre donné,
+// en tenant compte de l'âge réel du bac (un paramètre légèrement hors
+// plage à J13 en Rodage n'a pas le même sens qu'en bac mature).
+function getParamGuidance(paramKey, status, days, phaseLabel){
+  const g=PARAM_GUIDANCE[paramKey];
+  if(!g)return null;
+  let ageNote='';
+  if(days<35 && (paramKey==='no3'||paramKey==='po4'||paramKey==='no2'||paramKey==='nh3')){
+    ageNote=`<div style="margin-top:8px;padding:8px 10px;background:rgba(0,201,177,.08);border-radius:10px;font-size:12px;color:var(--teal)">💡 Ton bac est encore jeune (${days}j, phase « ${phaseLabel} »). C'est une période normale d'ajustement pour ce paramètre.</div>`;
+  }
+  return {why:g.why, low:g.low, high:g.high, action:g.action, ageNote};
+}
+
+// Ouvre la modale d'explication pour une ou plusieurs alertes de paramètres.
+// paramKeys = tableau de clés (ex: ['kh','no3']), reçu en JSON depuis le onclick.
+function openParamGuidanceModal(paramKeys){
+  const l=getLatest();
+  const days=daysFromStart();
+  const phase=getPhase();
+  let html=`<div class="mh"></div><div class="mt">Comprendre tes relevés</div>`;
+  paramKeys.forEach(p=>{
+    const c=PC[p];
+    const measure=l[p];
+    if(!c)return;
+    const status=measure?gSt(p,measure.value):'ok';
+    const guidance=getParamGuidance(p,status,days,phase.label);
+    const statusColor=status==='danger'?'var(--red)':status==='warn'?'var(--amber)':'var(--teal)';
+    const statusLabel=status==='danger'?'🚨 Hors plage':status==='warn'?'⚠️ À surveiller':'✅ Dans la plage';
+    const isLow=measure && measure.value < c.min;
+    const causeText = guidance ? (isLow ? guidance.low : guidance.high) : '';
+    html+=`<div style="margin-bottom:18px;padding-bottom:16px;border-bottom:.5px solid rgba(255,255,255,.08)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="font-size:15px;font-weight:700">${c.label}</div>
+        <div style="font-size:12px;color:${statusColor};font-weight:600">${statusLabel}</div>
+      </div>
+      ${measure?`<div style="font-size:13px;color:var(--t3);margin-bottom:8px">Dernière mesure : <strong style="color:var(--t1)">${measure.value}${c.unit}</strong> · Cible : ${c.target}${c.unit} (${c.min}–${c.max})</div>`:'<div style="font-size:13px;color:var(--t3);margin-bottom:8px">Aucune mesure encore enregistrée</div>'}
+      ${guidance?`
+        <div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:6px">${guidance.why}</div>
+        ${status!=='ok'?`<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:6px"><strong>Cause probable :</strong> ${causeText}</div>`:''}
+        ${status!=='ok'?`<div style="font-size:13px;color:var(--t1);line-height:1.5;background:rgba(45,142,232,.08);padding:8px 10px;border-radius:10px">👉 ${guidance.action}</div>`:''}
+        ${guidance.ageNote}
+      `:''}
+    </div>`;
+  });
+  html+=`<button class="btn btn-g" onclick="closeModal('modal-param-guidance')" style="width:100%">Fermer</button>`;
+  document.getElementById('pgm-content').innerHTML=html;
+  openModal('modal-param-guidance');
+}
 
 const PHASES = [
   {days:14, emoji:'🟤', label:'Rodage', color:'rgba(160,120,60,.15)', border:'rgba(160,120,60,.3)',
@@ -1260,8 +1379,8 @@ function renderAquarium(){
   let ah='';
   const dangers=Object.entries(l).filter(([p,m])=>gSt(p,m.value)==='danger');
   const warns=Object.entries(l).filter(([p,m])=>gSt(p,m.value)==='warn');
-  if(dangers.length)ah+=`<div class="al a-danger"><span class="ai">🚨</span><div><strong>${dangers.length} hors plage :</strong> ${dangers.map(([p])=>PC[p].label).join(', ')}</div></div>`;
-  if(warns.length)ah+=`<div class="al a-warn"><span class="ai">⚠️</span><div><strong>${warns.length} à surveiller :</strong> ${warns.map(([p])=>PC[p].label).join(', ')}</div></div>`;
+  if(dangers.length)ah+=`<div class="al a-danger" onclick="openParamGuidanceModal(${JSON.stringify(dangers.map(([p])=>p))})" style="cursor:pointer"><span class="ai">🚨</span><div><strong>${dangers.length} hors plage :</strong> ${dangers.map(([p])=>PC[p].label).join(', ')}</div></div>`;
+  if(warns.length)ah+=`<div class="al a-warn" onclick="openParamGuidanceModal(${JSON.stringify(warns.map(([p])=>p))})" style="cursor:pointer"><span class="ai">⚠️</span><div><strong>${warns.length} à surveiller :</strong> ${warns.map(([p])=>PC[p].label).join(', ')}</div></div>`;
   document.getElementById('main-alerts').innerHTML=ah;
 
   // Bilan
