@@ -773,39 +773,39 @@ const CORAL_TIPS = {
 // territorial = true si l'espèce défend un territoire (limite le nombre de congénères/similaires).
 const SPECIES_DB = {
   fish:[
-    {emoji:'🐠',name:'Clown Maroon Gold Stripe',sci:'Premnas biaculeatus',diff:2,minDays:60,minVol:200,tips:'Robuste, excellent débutant. Idéal avec une anémone Radianthus.',compat:'Hôte naturel : Radianthus malu.',incompatWith:['biaculeatus','clownfish','amphiprion'],territorial:true},
-    {emoji:'🐡',name:'Dartfish Décoré',sci:'Nemateleotris decora',diff:2,minDays:60,minVol:100,tips:'Paisible, nage élégante. Couvercle de bac obligatoire (sauteur).',compat:'Très pacifique, évite les poissons agressifs.',incompatWith:[],territorial:false},
-    {emoji:'🐟',name:'Centropyge bispinosus',sci:'Centropyge bispinosus',diff:2,minDays:90,minVol:150,tips:'Poisson-ange nain coloré. Peut grignoter coraux mous et LPS.',compat:'Attention avec les coraux mous déjà en place.',incompatWith:['centropyge'],territorial:true},
-    {emoji:'🦈',name:'Ecsenius bicolor',sci:'Ecsenius bicolor',diff:1,minDays:30,minVol:80,tips:'Blenny herbivore, mange les algues. Très facile.',compat:'Excellent avec presque toutes les espèces.',incompatWith:[],territorial:false},
-    {emoji:'🐟',name:'Chromis viridis',sci:'Chromis viridis',diff:1,minDays:30,minVol:100,tips:'Poisson de banc paisible, idéal pour débuter en groupe.',compat:'Vit en banc, prévoir plusieurs individus.',incompatWith:[],territorial:false},
-    {emoji:'🐠',name:'Clown Ocellaris',sci:'Amphiprion ocellaris',diff:1,minDays:30,minVol:80,tips:"Le clownfish le plus populaire, hyper robuste. Idéal premier poisson.",compat:'Paisible, accepte presque tout le monde.',incompatWith:['ocellaris','clownfish','amphiprion'],territorial:true},
-    {emoji:'🟡',name:'Chirurgien Jaune',sci:'Zebrasoma flavescens',diff:2,minDays:90,minVol:380,tips:"Très actif, a besoin de beaucoup d'espace pour nager. Excellent contre les algues.",compat:'Un seul par bac, territorial envers ses congénères.',incompatWith:['zebrasoma','tang','chirurgien'],territorial:true},
-    {emoji:'🔵',name:'Mandarin',sci:'Synchiropus splendidus',diff:4,minDays:180,minVol:190,tips:"Magnifique mais très exigeant : se nourrit presque exclusivement de copépodes vivants. Nécessite un bac mature avec refuge.",compat:'Paisible, mais à réserver aux bacs établis depuis longtemps.',incompatWith:[],territorial:false},
-    {emoji:'🟤',name:'Blenny Tondeuse',sci:'Salarias fasciatus',diff:1,minDays:45,minVol:150,tips:"Excellent brouteur d'algues, surnommé tondeuse à gazon. Bac déjà légèrement vert recommandé.",compat:'Paisible avec presque tout.',incompatWith:[],territorial:false},
-    {emoji:'🟣',name:'Royal Gramma',sci:'Gramma loreto',diff:1,minDays:30,minVol:115,tips:'Violet et jaune éclatant, reste près des cachettes. Très facile.',compat:'Paisible, peut être territorial envers son propre territoire de cachette.',incompatWith:['gramma'],territorial:true},
-    {emoji:'🐟',name:'Cardinal de Banggai',sci:'Pterapogon kauderni',diff:2,minDays:45,minVol:100,tips:'Nage lentement, très calme. Bonne espèce pour bac communautaire paisible.',compat:'Excellent avec crevettes et invertébrés.',incompatWith:[],territorial:false},
-    {emoji:'🦫',name:'Goby Gardien Jaune',sci:'Cryptocentrus cinctus',diff:2,minDays:45,minVol:90,tips:'Vit en symbiose avec une crevette pistolet qui creuse pour lui en échange de protection.',compat:'Forme un duo fascinant avec Alpheus (crevette pistolet).',incompatWith:[],territorial:false}
+    {emoji:'🐠',name:'Clown Maroon Gold Stripe',sci:'Premnas biaculeatus',diff:2,minDays:60,minVol:200,tips:'Robuste, excellent débutant. Idéal avec une anémone Radianthus.',compat:'Hôte naturel : Radianthus malu.',incompatWith:['biaculeatus','clownfish','amphiprion'],territorial:true,commonsFile:'Premnas_biaculeatus_(Maroon_or_spinecheek_anemonefish).jpg'},
+    {emoji:'🐡',name:'Dartfish Décoré',sci:'Nemateleotris decora',diff:2,minDays:60,minVol:100,tips:'Paisible, nage élégante. Couvercle de bac obligatoire (sauteur).',compat:'Très pacifique, évite les poissons agressifs.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🐟',name:'Centropyge bispinosus',sci:'Centropyge bispinosus',diff:2,minDays:90,minVol:150,tips:'Poisson-ange nain coloré. Peut grignoter coraux mous et LPS.',compat:'Attention avec les coraux mous déjà en place.',incompatWith:['centropyge'],territorial:true,commonsFile:''},
+    {emoji:'🦈',name:'Ecsenius bicolor',sci:'Ecsenius bicolor',diff:1,minDays:30,minVol:80,tips:'Blenny herbivore, mange les algues. Très facile.',compat:'Excellent avec presque toutes les espèces.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🐟',name:'Chromis viridis',sci:'Chromis viridis',diff:1,minDays:30,minVol:100,tips:'Poisson de banc paisible, idéal pour débuter en groupe.',compat:'Vit en banc, prévoir plusieurs individus.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🐠',name:'Clown Ocellaris',sci:'Amphiprion ocellaris',diff:1,minDays:30,minVol:80,tips:"Le clownfish le plus populaire, hyper robuste. Idéal premier poisson.",compat:'Paisible, accepte presque tout le monde.',incompatWith:['ocellaris','clownfish','amphiprion'],territorial:true,commonsFile:''},
+    {emoji:'🟡',name:'Chirurgien Jaune',sci:'Zebrasoma flavescens',diff:2,minDays:90,minVol:380,tips:"Très actif, a besoin de beaucoup d'espace pour nager. Excellent contre les algues.",compat:'Un seul par bac, territorial envers ses congénères.',incompatWith:['zebrasoma','tang','chirurgien'],territorial:true,commonsFile:''},
+    {emoji:'🔵',name:'Mandarin',sci:'Synchiropus splendidus',diff:4,minDays:180,minVol:190,tips:"Magnifique mais très exigeant : se nourrit presque exclusivement de copépodes vivants. Nécessite un bac mature avec refuge.",compat:'Paisible, mais à réserver aux bacs établis depuis longtemps.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🟤',name:'Blenny Tondeuse',sci:'Salarias fasciatus',diff:1,minDays:45,minVol:150,tips:"Excellent brouteur d'algues, surnommé tondeuse à gazon. Bac déjà légèrement vert recommandé.",compat:'Paisible avec presque tout.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🟣',name:'Royal Gramma',sci:'Gramma loreto',diff:1,minDays:30,minVol:115,tips:'Violet et jaune éclatant, reste près des cachettes. Très facile.',compat:'Paisible, peut être territorial envers son propre territoire de cachette.',incompatWith:['gramma'],territorial:true,commonsFile:''},
+    {emoji:'🐟',name:'Cardinal de Banggai',sci:'Pterapogon kauderni',diff:2,minDays:45,minVol:100,tips:'Nage lentement, très calme. Bonne espèce pour bac communautaire paisible.',compat:'Excellent avec crevettes et invertébrés.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🦫',name:'Goby Gardien Jaune',sci:'Cryptocentrus cinctus',diff:2,minDays:45,minVol:90,tips:'Vit en symbiose avec une crevette pistolet qui creuse pour lui en échange de protection.',compat:'Forme un duo fascinant avec Alpheus (crevette pistolet).',incompatWith:[],territorial:false,commonsFile:''}
   ],
   coral:[
-    {emoji:'⚪',name:'Zoanthus / Palythoa',sci:'Zoanthus sp.',diff:1,minDays:35,minVol:50,tips:'Premier corail idéal. Robuste, coloré, croissance rapide.',compat:'Compatible avec presque tout type.',incompatWith:[],territorial:false},
-    {emoji:'🌿',name:'Clavularia vert',sci:'Clavularia viridis',diff:1,minDays:35,minVol:50,tips:'Corail mou très facile. Croissance rapide, peut envahir.',compat:'Éloigner des SPS (peut les irriter en poussant).',incompatWith:['sps'],territorial:false},
-    {emoji:'🔨',name:'Hammer Coral',sci:'Euphyllia ancora',diff:2,minDays:60,minVol:150,tips:"LPS spectaculaire. Demande de l'espace autour de lui.",compat:'Tentacules urticants — espacer des autres LPS de 15cm+.',incompatWith:['lps','euphyllia'],territorial:true},
-    {emoji:'🪸',name:'Chalice',sci:'Echinophyllia sp.',diff:3,minDays:90,minVol:150,tips:'Coloration unique. Lumière modérée, courant faible.',compat:'Bon voisinage avec les autres LPS calmes.',incompatWith:[],territorial:false},
-    {emoji:'🟢',name:'Montipora',sci:'Montipora sp.',diff:3,minDays:120,minVol:150,tips:'SPS à croissance encrustante ou en plaque. Demande paramètres très stables (KH/Ca/Mg).',compat:'Bac mature requis, lumière et courant forts.',incompatWith:[],territorial:false},
-    {emoji:'🌳',name:'Acropora',sci:'Acropora sp.',diff:4,minDays:150,minVol:200,tips:'Le SPS le plus exigeant. Croissance spectaculaire en branches si conditions parfaites.',compat:'Réservé aux bacs très stables et expérimentés.',incompatWith:[],territorial:false},
-    {emoji:'🍄',name:'Champignon Ricordea',sci:'Ricordea florida',diff:1,minDays:30,minVol:50,tips:'Couleurs fluo, très facile et tolérant. Bon corail de démarrage.',compat:'Peut se multiplier rapidement, se propage facilement.',incompatWith:[],territorial:false},
-    {emoji:'🧠',name:'Corail Cerveau',sci:'Trachyphyllia geoffroyi',diff:2,minDays:60,minVol:100,tips:"LPS posé sur le sable, n'a pas besoin d'être fixé à la roche.",compat:'Garder de la distance avec les autres LPS.',incompatWith:['lps'],territorial:true}
+    {emoji:'⚪',name:'Zoanthus / Palythoa',sci:'Zoanthus sp.',diff:1,minDays:35,minVol:50,tips:'Premier corail idéal. Robuste, coloré, croissance rapide.',compat:'Compatible avec presque tout type.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🌿',name:'Clavularia vert',sci:'Clavularia viridis',diff:1,minDays:35,minVol:50,tips:'Corail mou très facile. Croissance rapide, peut envahir.',compat:'Éloigner des SPS (peut les irriter en poussant).',incompatWith:['sps'],territorial:false,commonsFile:''},
+    {emoji:'🔨',name:'Hammer Coral',sci:'Euphyllia ancora',diff:2,minDays:60,minVol:150,tips:"LPS spectaculaire. Demande de l'espace autour de lui.",compat:'Tentacules urticants — espacer des autres LPS de 15cm+.',incompatWith:['lps','euphyllia'],territorial:true,commonsFile:''},
+    {emoji:'🪸',name:'Chalice',sci:'Echinophyllia sp.',diff:3,minDays:90,minVol:150,tips:'Coloration unique. Lumière modérée, courant faible.',compat:'Bon voisinage avec les autres LPS calmes.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🟢',name:'Montipora',sci:'Montipora sp.',diff:3,minDays:120,minVol:150,tips:'SPS à croissance encrustante ou en plaque. Demande paramètres très stables (KH/Ca/Mg).',compat:'Bac mature requis, lumière et courant forts.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🌳',name:'Acropora',sci:'Acropora sp.',diff:4,minDays:150,minVol:200,tips:'Le SPS le plus exigeant. Croissance spectaculaire en branches si conditions parfaites.',compat:'Réservé aux bacs très stables et expérimentés.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🍄',name:'Champignon Ricordea',sci:'Ricordea florida',diff:1,minDays:30,minVol:50,tips:'Couleurs fluo, très facile et tolérant. Bon corail de démarrage.',compat:'Peut se multiplier rapidement, se propage facilement.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🧠',name:'Corail Cerveau',sci:'Trachyphyllia geoffroyi',diff:2,minDays:60,minVol:100,tips:"LPS posé sur le sable, n'a pas besoin d'être fixé à la roche.",compat:'Garder de la distance avec les autres LPS.',incompatWith:['lps'],territorial:true,commonsFile:''}
   ],
   inv:[
-    {emoji:'🐌',name:'Escargots Turbo',sci:'Turbo sp.',diff:1,minDays:21,minVol:50,tips:"Excellent nettoyeur d'algues. Quasi indispensable.",compat:'Parfait avec toutes les espèces.',incompatWith:[],territorial:false},
-    {emoji:'🦔',name:'Oursin Mespilia',sci:'Mespilia globulus',diff:1,minDays:21,minVol:100,tips:'Mange les algues, très actif la nuit.',compat:'Éviter avec les étoiles de mer prédatrices.',incompatWith:['starfish'],territorial:false},
-    {emoji:'🦐',name:'Crevette Lysmata',sci:'Lysmata amboinensis',diff:1,minDays:45,minVol:80,tips:'Crevette nettoyeuse, retire les parasites des poissons.',compat:'Éviter avec les poissons-globes (Canthigaster).',incompatWith:['canthigaster','toby'],territorial:false},
-    {emoji:'🌺',name:'Sabelle',sci:'Sabellastarte sp.',diff:2,minDays:60,minVol:100,tips:'Ver tubicole filtreur. Esthétique mais fragile.',compat:'Éviter les poissons piqueurs/becs (Canthigaster).',incompatWith:['canthigaster','toby','piqueur'],territorial:false},
-    {emoji:'🐚',name:'Escargot Trochus',sci:'Trochus sp.',diff:1,minDays:14,minVol:40,tips:"Un des tout premiers détritivores à introduire. Très résistant, idéal même en bac jeune.",compat:'Excellent avec tout le monde.',incompatWith:[],territorial:false},
-    {emoji:'🐌',name:'Escargot Nassarius',sci:'Nassarius sp.',diff:1,minDays:21,minVol:40,tips:"Vit enfoui dans le sable, ressort dès qu'il sent de la nourriture. Excellent nettoyeur de fond.",compat:'Parfait avec tout le monde.',incompatWith:[],territorial:false},
-    {emoji:'🦀',name:'Crabe Émeraude',sci:'Mithraculus sciutus',diff:1,minDays:30,minVol:75,tips:"Excellent contre les algues filamenteuses et l'aiptasia. Surveiller si peu nourri (peut s'en prendre aux coraux).",compat:'Bien nourrir régulièrement pour éviter tout comportement opportuniste.',incompatWith:[],territorial:false},
-    {emoji:'🦐',name:'Crevette Pistolet',sci:'Alpheus sp.',diff:2,minDays:45,minVol:90,tips:'Creuse un terrier, souvent en duo symbiotique avec un Goby gardien.',compat:'Association classique avec Cryptocentrus cinctus.',incompatWith:[],territorial:false},
-    {emoji:'🐚',name:'Bénitier',sci:'Tridacna sp.',diff:3,minDays:120,minVol:150,tips:"Mollusque géant photosynthétique, demande une lumière puissante et une eau très stable.",compat:'Réservé aux bacs matures avec éclairage performant.',incompatWith:[],territorial:false}
+    {emoji:'🐌',name:'Escargots Turbo',sci:'Turbo sp.',diff:1,minDays:21,minVol:50,tips:"Excellent nettoyeur d'algues. Quasi indispensable.",compat:'Parfait avec toutes les espèces.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🦔',name:'Oursin Mespilia',sci:'Mespilia globulus',diff:1,minDays:21,minVol:100,tips:'Mange les algues, très actif la nuit.',compat:'Éviter avec les étoiles de mer prédatrices.',incompatWith:['starfish'],territorial:false,commonsFile:''},
+    {emoji:'🦐',name:'Crevette Lysmata',sci:'Lysmata amboinensis',diff:1,minDays:45,minVol:80,tips:'Crevette nettoyeuse, retire les parasites des poissons.',compat:'Éviter avec les poissons-globes (Canthigaster).',incompatWith:['canthigaster','toby'],territorial:false,commonsFile:''},
+    {emoji:'🌺',name:'Sabelle',sci:'Sabellastarte sp.',diff:2,minDays:60,minVol:100,tips:'Ver tubicole filtreur. Esthétique mais fragile.',compat:'Éviter les poissons piqueurs/becs (Canthigaster).',incompatWith:['canthigaster','toby','piqueur'],territorial:false,commonsFile:''},
+    {emoji:'🐚',name:'Escargot Trochus',sci:'Trochus sp.',diff:1,minDays:14,minVol:40,tips:"Un des tout premiers détritivores à introduire. Très résistant, idéal même en bac jeune.",compat:'Excellent avec tout le monde.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🐌',name:'Escargot Nassarius',sci:'Nassarius sp.',diff:1,minDays:21,minVol:40,tips:"Vit enfoui dans le sable, ressort dès qu'il sent de la nourriture. Excellent nettoyeur de fond.",compat:'Parfait avec tout le monde.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🦀',name:'Crabe Émeraude',sci:'Mithraculus sciutus',diff:1,minDays:30,minVol:75,tips:"Excellent contre les algues filamenteuses et l'aiptasia. Surveiller si peu nourri (peut s'en prendre aux coraux).",compat:'Bien nourrir régulièrement pour éviter tout comportement opportuniste.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🦐',name:'Crevette Pistolet',sci:'Alpheus sp.',diff:2,minDays:45,minVol:90,tips:'Creuse un terrier, souvent en duo symbiotique avec un Goby gardien.',compat:'Association classique avec Cryptocentrus cinctus.',incompatWith:[],territorial:false,commonsFile:''},
+    {emoji:'🐚',name:'Bénitier',sci:'Tridacna sp.',diff:3,minDays:120,minVol:150,tips:"Mollusque géant photosynthétique, demande une lumière puissante et une eau très stable.",compat:'Réservé aux bacs matures avec éclairage performant.',incompatWith:[],territorial:false,commonsFile:''}
   ]
 };
 
@@ -1511,9 +1511,11 @@ function renderPop(){
   document.getElementById('cf').textContent=tank.filter(a=>a.cat==='fish').length;
   document.getElementById('ci').textContent=tank.filter(a=>a.cat==='inv').length;
   document.getElementById('cp').textContent=plan.length;
-  const aH=arr=>arr.length?arr.map(a=>`
+  const aH=arr=>arr.length?arr.map(a=>{
+    const popImgId='pop-img-'+a.id;
+    return `
     <div class="cc" onclick="openCreature('${a.id}')">
-      <div class="ca ${a.status==='tank'?'it':a.status==='dead'?'pl':'pl'}">${a.photo?`<img src="${a.photo}">`:(a.emoji||'🐟')}</div>
+      <div class="ca ${a.status==='tank'?'it':a.status==='dead'?'pl':'pl'}" id="${popImgId}">${a.photo?`<img src="${a.photo}">`:(a.emoji||'🐟')}</div>
       <div class="ci">
         <div class="cn">${a.name}</div>
         <div class="cs">${a.sci}</div>
@@ -1521,11 +1523,19 @@ function renderPop(){
         <span class="cbadge ${a.status==='tank'?'b-it':a.status==='dead'?'b-de':'b-pl'}">${a.status==='tank'?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
       </div>
       <div class="cc-ch">›</div>
-    </div>`).join(''):
+    </div>`;
+  }).join(''):
     '<div class="emp"><div class="emp-i">—</div><div class="emp-t">Aucun animal ici.</div></div>';
   document.getElementById('fish-tank').innerHTML=aH(tank);
   document.getElementById('fish-plan').innerHTML=aH([...plan,...dead]);
   renderCoraux();
+  // Pour les animaux sans photo personnelle, on cherche une espèce
+  // correspondante dans SPECIES_DB pour utiliser sa photo Commons validée.
+  const allSpecies=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv];
+  [...tank,...plan,...dead].filter(a=>!a.photo && a.sci).forEach(a=>{
+    const match=allSpecies.find(sp=>sp.sci===a.sci);
+    if(match) loadSpeciesPhoto(match, 'pop-img-'+a.id);
+  });
 }
 
 function openCreature(id){
@@ -1864,6 +1874,56 @@ function setDecCategory(cat, el){
   renderDec();
 }
 
+// Cache mémoire (par session) pour éviter de réinterroger Commons plusieurs
+// fois pour le même fichier pendant la navigation.
+const commonsImgCache={};
+
+// Récupère l'URL technique réelle d'une image hébergée sur Wikimedia Commons
+// à partir de son seul nom de fichier (ex: "Premnas_biaculeatus_(....).jpg"),
+// sans avoir besoin de connaître le hash de chemin imprévisible. Demande une
+// miniature de 500px de large pour rester léger. origin=* est nécessaire pour
+// autoriser l'appel depuis le navigateur (CORS).
+async function fetchCommonsImage(filename){
+  if(!filename)return null;
+  if(commonsImgCache[filename]!==undefined)return commonsImgCache[filename];
+  try{
+    const url=`https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent('File:'+filename)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`;
+    const resp=await fetch(url);
+    if(!resp.ok){commonsImgCache[filename]=null;return null}
+    const data=await resp.json();
+    const pages=data?.query?.pages;
+    if(!pages){commonsImgCache[filename]=null;return null}
+    const page=Object.values(pages)[0];
+    const info=page?.imageinfo?.[0];
+    const imgUrl=info?.thumburl || info?.url || null;
+    commonsImgCache[filename]=imgUrl;
+    return imgUrl;
+  }catch(err){
+    console.error('Erreur récupération image Commons:',filename,err);
+    commonsImgCache[filename]=null;
+    return null;
+  }
+}
+// Applique l'image récupérée sur l'élément cible désigné par son id, en
+// préchargeant d'abord pour éviter un flash d'image cassée. Si l'élément
+// n'existe plus (carte retirée entre-temps), ne fait rien.
+function applyCommonsImage(targetId, url){
+  if(!url)return;
+  const img=new Image();
+  img.onload=()=>{
+    const target=document.getElementById(targetId);
+    if(!target)return;
+    target.style.fontSize='';
+    target.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+  };
+  img.src=url;
+}
+async function loadSpeciesPhoto(sp, targetId){
+  if(!sp.commonsFile)return; // pas encore de photo associée à cette espèce
+  const url=await fetchCommonsImage(sp.commonsFile);
+  if(url)applyCommonsImage(targetId, url);
+}
+
 function buildDeck(category){
   const ownedKw=getOwnedKeywords();
   return SPECIES_DB[category].filter(sp=>{
@@ -1957,10 +2017,11 @@ function renderSwipeZone(){
     const ev=evaluateSpecies(sp,days,ownedKw);
     const statusBadge = ev.status==='ok' ? '✅ Compatible maintenant' : ev.status==='soon' ? '⏳ Bientôt possible' : '🚫 Non recommandé';
     const isTop=i===visible.length-1;
+    const cardImgId='sw-img-'+sp.sci.replace(/[^a-zA-Z0-9]/g,'')+'-'+i;
     html+=`<div class="sw-card" style="z-index:${i};transform:translateY(${offsetY}px) scale(${scale})" ${isTop?`id="sw-top-card" onpointerdown="swStart(event)" onpointermove="swMove(event)" onpointerup="swEnd(event)" onpointercancel="swEnd(event)"`:''} data-sci="${sp.sci}">
       <div class="sw-stamp like">Adopté</div>
       <div class="sw-stamp nope">Éliminé</div>
-      <div class="sw-card-emoji">${sp.emoji}</div>
+      <div class="sw-card-emoji" id="${cardImgId}">${sp.emoji}</div>
       <div class="sw-card-body">
         <div class="sw-card-name">${sp.name}</div>
         <div class="sw-card-sci">${sp.sci}</div>
@@ -1978,6 +2039,10 @@ function renderSwipeZone(){
   html+=`<div class="sw-actions"><button class="sw-btn sw-btn-nope" onclick="swipeButton('nope')">✕</button><button class="sw-btn sw-btn-like" onclick="swipeButton('like')">♥</button></div>`;
   zone.innerHTML=html;
   activeCardEl=document.getElementById('sw-top-card');
+  visible.forEach((sp,i)=>{
+    const cardImgId='sw-img-'+sp.sci.replace(/[^a-zA-Z0-9]/g,'')+'-'+i;
+    loadSpeciesPhoto(sp, cardImgId);
+  });
 }
 
 // ── Gestes tactiles (souris + doigt, via Pointer Events) ──
