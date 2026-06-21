@@ -1511,11 +1511,9 @@ function renderPop(){
   document.getElementById('cf').textContent=tank.filter(a=>a.cat==='fish').length;
   document.getElementById('ci').textContent=tank.filter(a=>a.cat==='inv').length;
   document.getElementById('cp').textContent=plan.length;
-  const aH=arr=>arr.length?arr.map(a=>{
-    const popImgId='pop-img-'+a.id;
-    return `
+  const aH=arr=>arr.length?arr.map(a=>`
     <div class="cc" onclick="openCreature('${a.id}')">
-      <div class="ca ${a.status==='tank'?'it':a.status==='dead'?'pl':'pl'}" id="${popImgId}">${a.photo?`<img src="${a.photo}">`:(a.emoji||'🐟')}</div>
+      <div class="ca ${a.status==='tank'?'it':a.status==='dead'?'pl':'pl'}">${a.photo?`<img src="${a.photo}">`:(a.emoji||'🐟')}</div>
       <div class="ci">
         <div class="cn">${a.name}</div>
         <div class="cs">${a.sci}</div>
@@ -1523,17 +1521,11 @@ function renderPop(){
         <span class="cbadge ${a.status==='tank'?'b-it':a.status==='dead'?'b-de':'b-pl'}">${a.status==='tank'?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
       </div>
       <div class="cc-ch">›</div>
-    </div>`;
-  }).join(''):
+    </div>`).join(''):
     '<div class="emp"><div class="emp-i">—</div><div class="emp-t">Aucun animal ici.</div></div>';
   document.getElementById('fish-tank').innerHTML=aH(tank);
   document.getElementById('fish-plan').innerHTML=aH([...plan,...dead]);
   renderCoraux();
-  // Pour les animaux sans photo personnelle, on tente une photo Wikipedia
-  // de l'espèce en complément (jamais à la place d'une vraie photo perso).
-  [...tank,...plan,...dead].filter(a=>!a.photo && a.sci).forEach(a=>{
-    loadSpeciesImage({sci:a.sci}, 'pop-img-'+a.id);
-  });
 }
 
 function openCreature(id){
@@ -1872,47 +1864,6 @@ function setDecCategory(cat, el){
   renderDec();
 }
 
-// Cache mémoire (par session) pour éviter de réinterroger Wikipedia
-// plusieurs fois pour la même espèce pendant la navigation dans le paquet.
-const speciesImgCache={};
-
-// Récupère une photo de l'espèce depuis l'API publique Wikipedia (gratuite,
-// sans clé). Tente l'anglais en premier (meilleure couverture des espèces
-// récifales), puis le français en repli. En cas d'échec total, l'emoji
-// déjà affiché reste simplement en place — aucune dégradation visuelle.
-async function loadSpeciesImage(sp, targetId){
-  if(speciesImgCache[sp.sci]!==undefined){
-    if(speciesImgCache[sp.sci]) applySpeciesImage(targetId, speciesImgCache[sp.sci]);
-    return;
-  }
-  const articleName=sp.sci.replace(/ /g,'_');
-  const imgUrl = await fetchWikiThumbnail('en', articleName) || await fetchWikiThumbnail('fr', articleName);
-  speciesImgCache[sp.sci]=imgUrl;
-  if(imgUrl) applySpeciesImage(targetId, imgUrl);
-}
-async function fetchWikiThumbnail(lang, articleName){
-  try{
-    const resp=await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(articleName)}`);
-    if(!resp.ok) return null;
-    const data=await resp.json();
-    return data.thumbnail?.source || null;
-  }catch(err){
-    return null;
-  }
-}
-function applySpeciesImage(targetId, url){
-  const el=document.getElementById(targetId);
-  if(!el)return; // la carte a pu être retirée du DOM entre-temps (swipe rapide)
-  const img=new Image();
-  img.onload=()=>{
-    const target=document.getElementById(targetId);
-    if(!target)return;
-    target.style.fontSize='';
-    target.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
-  };
-  img.src=url;
-}
-
 function buildDeck(category){
   const ownedKw=getOwnedKeywords();
   return SPECIES_DB[category].filter(sp=>{
@@ -2006,11 +1957,10 @@ function renderSwipeZone(){
     const ev=evaluateSpecies(sp,days,ownedKw);
     const statusBadge = ev.status==='ok' ? '✅ Compatible maintenant' : ev.status==='soon' ? '⏳ Bientôt possible' : '🚫 Non recommandé';
     const isTop=i===visible.length-1;
-    const cardImgId='sw-img-'+sp.sci.replace(/[^a-zA-Z0-9]/g,'')+'-'+i;
     html+=`<div class="sw-card" style="z-index:${i};transform:translateY(${offsetY}px) scale(${scale})" ${isTop?`id="sw-top-card" onpointerdown="swStart(event)" onpointermove="swMove(event)" onpointerup="swEnd(event)" onpointercancel="swEnd(event)"`:''} data-sci="${sp.sci}">
       <div class="sw-stamp like">Adopté</div>
       <div class="sw-stamp nope">Éliminé</div>
-      <div class="sw-card-emoji" id="${cardImgId}">${sp.emoji}</div>
+      <div class="sw-card-emoji">${sp.emoji}</div>
       <div class="sw-card-body">
         <div class="sw-card-name">${sp.name}</div>
         <div class="sw-card-sci">${sp.sci}</div>
@@ -2028,10 +1978,6 @@ function renderSwipeZone(){
   html+=`<div class="sw-actions"><button class="sw-btn sw-btn-nope" onclick="swipeButton('nope')">✕</button><button class="sw-btn sw-btn-like" onclick="swipeButton('like')">♥</button></div>`;
   zone.innerHTML=html;
   activeCardEl=document.getElementById('sw-top-card');
-  visible.forEach((sp,i)=>{
-    const cardImgId='sw-img-'+sp.sci.replace(/[^a-zA-Z0-9]/g,'')+'-'+i;
-    loadSpeciesImage(sp, cardImgId);
-  });
 }
 
 // ── Gestes tactiles (souris + doigt, via Pointer Events) ──
