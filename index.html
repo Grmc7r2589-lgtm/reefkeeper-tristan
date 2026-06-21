@@ -1379,8 +1379,8 @@ function renderAquarium(){
   let ah='';
   const dangers=Object.entries(l).filter(([p,m])=>gSt(p,m.value)==='danger');
   const warns=Object.entries(l).filter(([p,m])=>gSt(p,m.value)==='warn');
-  if(dangers.length)ah+=`<div class="al a-danger" onclick="openParamGuidanceModal(${JSON.stringify(dangers.map(([p])=>p))})" style="cursor:pointer"><span class="ai">🚨</span><div><strong>${dangers.length} hors plage :</strong> ${dangers.map(([p])=>PC[p].label).join(', ')}</div></div>`;
-  if(warns.length)ah+=`<div class="al a-warn" onclick="openParamGuidanceModal(${JSON.stringify(warns.map(([p])=>p))})" style="cursor:pointer"><span class="ai">⚠️</span><div><strong>${warns.length} à surveiller :</strong> ${warns.map(([p])=>PC[p].label).join(', ')}</div></div>`;
+  if(dangers.length)ah+=`<div class="al a-danger" onclick='openParamGuidanceModal(${JSON.stringify(dangers.map(([p])=>p))})' style="cursor:pointer"><span class="ai">🚨</span><div><strong>${dangers.length} hors plage :</strong> ${dangers.map(([p])=>PC[p].label).join(', ')}</div></div>`;
+  if(warns.length)ah+=`<div class="al a-warn" onclick='openParamGuidanceModal(${JSON.stringify(warns.map(([p])=>p))})' style="cursor:pointer"><span class="ai">⚠️</span><div><strong>${warns.length} à surveiller :</strong> ${warns.map(([p])=>PC[p].label).join(', ')}</div></div>`;
   document.getElementById('main-alerts').innerHTML=ah;
 
   // Bilan
