@@ -291,6 +291,24 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 .sw-btn-like{background:linear-gradient(135deg,#007a6a,var(--teal))}
 .sw-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--t3)}
 .sw-progress{text-align:center;font-size:12px;color:var(--t4);margin-bottom:8px}
+
+/* GRILLE "TOUT DÉCOUVRIR" */
+.disc-divider{display:flex;align-items:center;gap:10px;margin:22px 0 14px}
+.disc-divider::before,.disc-divider::after{content:'';flex:1;height:.5px;background:rgba(45,142,232,.18)}
+.disc-divider-label{font-size:12px;color:var(--t3);font-weight:600;white-space:nowrap}
+.disc-cat-title{font-size:13px;font-weight:700;color:var(--t2);margin:16px 0 8px;display:flex;align-items:center;gap:6px}
+.disc-cat-title:first-child{margin-top:0}
+.disc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px}
+.disc-tile{position:relative;background:linear-gradient(160deg,var(--bg1),var(--bg2));border:.5px solid rgba(45,142,232,.15);border-radius:var(--rs);overflow:hidden;cursor:default}
+.disc-tile-img{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:34px;background:linear-gradient(135deg,var(--bg2),var(--bg3));overflow:hidden}
+.disc-tile-img img{width:100%;height:100%;object-fit:cover}
+.disc-tile-body{padding:7px 8px 9px}
+.disc-tile-name{font-size:11.5px;font-weight:600;color:var(--t1);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.disc-tile-sci{font-size:9.5px;color:var(--t3);font-style:italic;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.disc-star{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:rgba(3,8,15,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;border:.5px solid rgba(255,255,255,.15);transition:transform .15s,background .15s}
+.disc-star:active{transform:scale(.85)}
+.disc-star.is-on{background:linear-gradient(135deg,#b8860b,var(--amber));border-color:var(--amber)}
+.disc-empty-cat{font-size:11px;color:var(--t4);padding:6px 2px 2px}
 </style>
 
 </head>
@@ -448,6 +466,10 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         <div class="sb" onclick="setCoralSubtype('anemone',this)">Anémones</div>
       </div>
       <div id="swipe-zone"></div>
+
+      <div class="disc-divider"><span class="disc-divider-label">🔭 Tout découvrir</span></div>
+      <div id="disc-grid-zone"></div>
+
       <div class="sh" style="margin-top:18px"><span class="shl">Éliminés</span><span class="shr" id="elim-count" onclick="toggleEliminatedView()">Voir (0)</span></div>
       <div id="eliminated-list" style="display:none"></div>
     </div>
@@ -2120,6 +2142,7 @@ function renderDec(){
   }
   currentDeck=buildDeck(decCategory);
   renderSwipeZone();
+  renderDiscoveryGrid();
   updateEliminatedCount();
 }
 
@@ -2171,6 +2194,7 @@ async function restoreSpecies(sci){
   renderEliminatedList();
   currentDeck=buildDeck(decCategory);
   renderSwipeZone();
+  renderDiscoveryGrid();
   updateEliminatedCount();
 }
 
@@ -2217,6 +2241,58 @@ function renderSwipeZone(){
   html+=`<div class="sw-actions"><button class="sw-btn sw-btn-nope" onclick="swipeButton('nope')">✕</button><button class="sw-btn sw-btn-like" onclick="swipeButton('like')">♥</button></div>`;
   zone.innerHTML=html;
   activeCardEl=document.getElementById('sw-top-card');
+}
+
+// ── Grille "Tout découvrir" : parcourir toute la bibliothèque sans swiper ──
+const DISC_CATS=[{key:'fish',label:'🐟 Poissons'},{key:'coral',label:'🪸 Coraux'},{key:'inv',label:'🦐 Invertébrés'}];
+
+function renderDiscoveryGrid(){
+  const zone=document.getElementById('disc-grid-zone');
+  if(!zone)return;
+  const ownedKw=getOwnedKeywords();
+  let html='';
+  DISC_CATS.forEach(cat=>{
+    const species=SPECIES_DB[cat.key].filter(sp=>!ownedKw.includes(sp.sci.toLowerCase()));
+    html+=`<div class="disc-cat-title">${cat.label} <span style="color:var(--t4);font-weight:500">(${species.length})</span></div>`;
+    if(!species.length){
+      html+=`<div class="disc-empty-cat">Tout est déjà dans ton bac ou tes souhaits 🎉</div>`;
+      return;
+    }
+    html+=`<div class="disc-grid">`;
+    species.forEach(sp=>{
+      const photoContent = sp.photo ? `<img src="${sp.photo}" loading="lazy">` : sp.emoji;
+      const isAdopted = speciesDecisions[sp.sci]==='adopted';
+      html+=`<div class="disc-tile">
+        <div class="disc-star ${isAdopted?'is-on':''}" onclick="discToggleStar(event,'${sp.sci}')">${isAdopted?'⭐':'☆'}</div>
+        <div class="disc-tile-img">${photoContent}</div>
+        <div class="disc-tile-body">
+          <div class="disc-tile-name">${sp.name}</div>
+          <div class="disc-tile-sci">${sp.sci}</div>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  zone.innerHTML=html;
+}
+
+async function discToggleStar(evt,sci){
+  evt.stopPropagation();
+  if(speciesDecisions[sci]==='adopted'){
+    toast('💡 Déjà dans tes souhaits — gère-le depuis Population/Coraux');
+    return;
+  }
+  const sp=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv].find(s=>s.sci===sci);
+  if(!sp)return;
+  speciesDecisions[sci]='adopted';
+  await addAdoptedSpecies(sp);
+  sb.from('species_decisions').upsert({owner_id:currentUser.id,species_sci:sci,decision:'adopted'}).then(({error})=>{
+    if(error)console.error('Erreur enregistrement décision espèce:',error);
+  });
+  // Retire aussi cette espèce du deck Tinder en cours pour rester cohérent
+  currentDeck=currentDeck.filter(s=>s.sci!==sci);
+  renderSwipeZone();
+  renderDiscoveryGrid();
 }
 
 // ── Gestes tactiles (souris + doigt, via Pointer Events) ──
