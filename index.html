@@ -1669,8 +1669,7 @@ function openCoral(id){
   // Même priorité que pour les animaux : photo perso > photo catalogue (matché par nom) > emoji
   let imgSrc=c.photo;
   if(!imgSrc && c.name){
-    const match=SPECIES_DB.coral.find(sp=>matchCoralName(sp.name, c.name));
-    if(match && match.photo) imgSrc=match.photo;
+    imgSrc=findCatalogPhoto(c.name);
   }
   const photoBanner = imgSrc
     ? `<div style="width:100%;height:170px;border-radius:18px;overflow:hidden;margin-bottom:14px;background:linear-gradient(135deg,#081e3a,#102a55)"><img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover"></div>`
@@ -1780,8 +1779,7 @@ function renderCoraux(){
   const cH=arr=>arr.length?arr.map(c=>{
     let imgSrc=c.photo;
     if(!imgSrc && c.name){
-      const match=SPECIES_DB.coral.find(sp=>matchCoralName(sp.name, c.name));
-      if(match && match.photo) imgSrc=match.photo;
+      imgSrc=findCatalogPhoto(c.name);
     }
     return `<div class="cc" onclick="openCoral('${c.id}')"><div class="ca ${c.status==='tank'?'it':'pl'}">${imgSrc?`<img src="${imgSrc}">`:(c.emoji||'🪸')}</div><div class="ci"><div class="cn">${c.name}</div><div class="cs">${tl[c.type]||c.type}${c.location?' · '+c.location:''}</div><span class="cbadge ${c.status==='tank'?'b-it':'b-pl'}">${c.status==='tank'?'✅ Dans le bac':'⏳ Prévu'}</span></div><div class="cc-ch">›</div></div>`;
   }).join(''):
@@ -1856,16 +1854,38 @@ async function delJournal(id){
 // ═══════════════════════════════════════════
 const TANK_VOLUME = 300; // Reefer 300 XL G3, volume net en litres
 
+// Alias pour les noms commerciaux abrégés qui n'ont pas de lien textuel
+// direct avec le nom catalogue (ex: "Zoa" est l'abréviation familière de
+// "Zoanthus" dans le monde aquariophile).
+const CORAL_NAME_ALIASES = { 'zoa':'zoanthus', 'palys':'zoanthus' };
+// Mots trop génériques pour servir de critère de correspondance à eux seuls
+// (sinon "Oursin Mespilia" matcherait "Oursin Clypeaster" via "oursin").
+const CORAL_GENERIC_WORDS = ['oursin','escargot','crevette','crabe','corail','anémone','anemone','poisson','colonie'];
+
+function normalizeCoralWords(str){
+  return str.toLowerCase().split(/[\s/]+/)
+    .map(w => CORAL_NAME_ALIASES[w] || w)
+    .filter(w => w.length>2 && !CORAL_GENERIC_WORDS.includes(w));
+}
 // Compare le nom d'une espèce du catalogue avec le nom personnalisé d'un
 // corail perso (ex: "Hammer Coral" vs "Colonie Rainbow Hammer"). Cherche
 // d'abord une égalité ou inclusion directe, puis un mot significatif commun
-// (4+ lettres) pour matcher les noms commerciaux très différents.
+// (en ignorant les mots génériques et en tenant compte des alias connus).
 function matchCoralName(speciesName, coralName){
   const a=speciesName.toLowerCase(), b=coralName.toLowerCase();
   if(a===b || b.includes(a) || a.includes(b)) return true;
-  const wordsA=a.split(/[\s/]+/).filter(w=>w.length>3);
-  const wordsB=b.split(/[\s/]+/).filter(w=>w.length>3);
+  const wordsA=normalizeCoralWords(speciesName);
+  const wordsB=normalizeCoralWords(coralName);
   return wordsA.some(w=>wordsB.includes(w));
+}
+// Cherche une photo correspondante dans TOUT le catalogue (coraux, poissons,
+// invertébrés) — certains "coraux" perso correspondent en fait à des
+// anémones ou vers tubicoles classés ailleurs dans SPECIES_DB (ex: Sabelle,
+// Radianthus malu sont dans .inv, pas .coral).
+function findCatalogPhoto(coralName){
+  const all=[...SPECIES_DB.coral,...SPECIES_DB.inv,...SPECIES_DB.fish];
+  const match=all.find(sp=>matchCoralName(sp.name, coralName));
+  return match && match.photo ? match.photo : null;
 }
 
 function getOwnedKeywords(){
