@@ -2040,44 +2040,9 @@ const ARTICLES_DB = [
 // ── Fil d'actualités contextuelles — sélection locale par scoring ─────────────
 let newsFeedCache = null;
 let newsFeedLoading = false;
+let newsSeenIds = []; // IDs vus cette session, pour forcer la rotation
 
-function scoreArticle(art, ctx){
-  let score = 0;
-  const {tankAge, nFish, nCoral, nPlanned, hasNitrites, hasAmmoniac, journalText} = ctx;
-
-  // Score par tags en fonction du contexte
-  const add = (keywords, pts) => {
-    if(keywords.some(k => art.tags.includes(k) || art.title.toLowerCase().includes(k))) score += pts;
-  };
-
-  // Phase cyclage : bac jeune (<30j), pas de poissons, nitrites/ammoniac élevés
-  if(tankAge < 30) add(['cyclage','azote','ammoniac','nitrites','bactéries','démarrage','maturation'], 8);
-  if(hasNitrites || hasAmmoniac)    add(['cyclage','azote','ammoniac','nitrites'], 6);
-
-  // Phase post-cyclage prête pour poissons (30-60j, 0 poissons)
-  if(tankAge >= 25 && nFish === 0) add(['premiers','poissons','acclimatation','introduction'], 7);
-
-  // A des poissons, prêt pour coraux mous
-  if(nFish > 0 && nCoral === 0)   add(['coraux mous','soft corals','alcyonnaires','premier corail'], 8);
-  if(nPlanned > 0)                add(['acclimatation','dip','introduction','coraux mous','premiers'], 5);
-
-  // A des coraux → paramètres, supplémentation
-  if(nCoral > 0) add(['paramètres','kh','calcium','supplémentation','magnésium'], 7);
-  if(nCoral > 2) add(['icp','analyse eau','nitrates','phosphates'], 4);
-
-  // Mots-clés du journal
-  const jl = journalText.toLowerCase();
-  if(jl.includes('alg'))          add(['algues','cyanobactéries','phosphates','nitrates'], 5);
-  if(jl.includes('nitrite') || jl.includes('ammon')) add(['cyclage','azote','bactéries'], 6);
-  if(jl.includes('param'))        add(['paramètres','kh','calcium'], 4);
-  if(jl.includes('corail') || jl.includes('coral')) add(['coraux mous','acclimatation','dip'], 4);
-  if(jl.includes('supplé'))       add(['supplémentation','kh','calcium','magnésium'], 5);
-
-  // Légère préférence pour la diversité des sources
-  return score;
-}
-
-function pickNewsArticles(){
+function buildNewsContext(){
   const tankAge = Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000);
   const nFish   = animals.filter(a=>a.status==='tank').length;
   const nCoral  = corals.filter(c=>c.status==='tank').length;
@@ -2085,64 +2050,136 @@ function pickNewsArticles(){
   const lastMeasure = measures && measures.length ? measures[measures.length-1] : null;
   const hasNitrites = lastMeasure && parseFloat(lastMeasure.no2||0) > 0.1;
   const hasAmmoniac = lastMeasure && parseFloat(lastMeasure.nh3||0) > 0.05;
-  const journalText = journal.slice().reverse().slice(0,8).map(j=>j.title+' '+j.note).join(' ');
+  const journalText = journal.slice().reverse().slice(0,10).map(j=>j.title+' '+j.note).join(' ').toLowerCase();
+  return {tankAge, nFish, nCoral, nPlanned, hasNitrites, hasAmmoniac, journalText};
+}
 
-  const ctx = {tankAge, nFish, nCoral, nPlanned, hasNitrites, hasAmmoniac, journalText};
-  const scored = ARTICLES_DB.map(a=>({...a, score:scoreArticle(a,ctx)}));
-  scored.sort((a,b)=>b.score-a.score);
+function scoreArticle(art, ctx){
+  const {tankAge, nFish, nCoral, nPlanned, hasNitrites, hasAmmoniac, journalText} = ctx;
+  let score = 0;
 
-  // Garantit une diversité de sources (au moins 1 de chaque si possible)
-  const picked = [];
-  const byScore = [...scored];
-  // prendre le meilleur RN et le meilleur AM d'abord
-  const bestRN = byScore.find(a=>a.src==='rn');
-  const bestAM = byScore.find(a=>a.src==='am');
-  if(bestRN) picked.push(bestRN);
-  if(bestAM) picked.push(bestAM);
-  // compléter avec le suivant le mieux scoré pas encore dedans
-  for(const a of byScore){
-    if(picked.length >= 3) break;
-    if(!picked.find(p=>p.id===a.id)) picked.push(a);
+  const has = (tags) => tags.some(k => art.tags.includes(k));
+  const titleHas = (words) => words.some(w => art.title.toLowerCase().includes(w));
+
+  // ── Phase 1 : bac très jeune, cyclage actif (0-25j) ──
+  if(tankAge < 25){
+    if(has(['cyclage','azote','ammoniac','nitrites','maturation'])) score += 10;
+    if(has(['bactéries','ensemencement','kit','démarrage']))         score += 8;
+    if(has(['microfaune']))                                           score += 6;
+    if(titleHas(['cyclage','cycle','ammoniac','bactéri','démarr']))  score += 4;
   }
-  return picked.slice(0,3);
+
+  // ── Phase 2 : fin cyclage, prêt pour poissons (25-45j, 0 poissons) ──
+  if(tankAge >= 25 && tankAge < 45 && nFish === 0){
+    if(has(['premiers','poissons','introduction']))                    score += 10;
+    if(has(['acclimatation']) && !has(['coraux','coral']))            score += 7;
+    if(has(['cyclage','bactéries']))                                   score += 4; // encore pertinent
+  }
+
+  // ── Phase 3 : poissons présents, pas encore de coraux ──
+  if(nFish > 0 && nCoral === 0){
+    if(has(['coraux mous','soft corals','alcyonnaires','premier corail'])) score += 12;
+    if(has(['acclimatation','dip']))                                        score += 8;
+    if(has(['paramètres','nitrates','phosphates']))                         score += 6;
+    if(has(['cyclage','bactéries']))                                        score += 2; // moins urgent
+  }
+
+  // ── Phase 4 : coraux présents ──
+  if(nCoral > 0){
+    if(has(['paramètres','kh','calcium','magnésium','supplémentation'])) score += 10;
+    if(has(['coraux mous','soft corals']))                                 score += 7;
+    if(nCoral > 2 && has(['icp','analyse eau']))                           score += 8;
+    if(has(['acclimatation','dip']))                                        score += 5;
+  }
+
+  // ── Alertes paramètres mesurés ──
+  if(hasNitrites) { if(has(['cyclage','azote','nitrites','bactéries'])) score += 8; }
+  if(hasAmmoniac) { if(has(['cyclage','ammoniac','bactéries']))          score += 8; }
+
+  // ── Mots-clés du journal (contenu réel des notes) ──
+  if(journalText.includes('alg'))           { if(has(['algues','cyanobactéries','phosphates','nitrates'])) score += 7; }
+  if(journalText.includes('cyano'))         { if(has(['cyanobactéries','algues']))                         score += 9; }
+  if(journalText.includes('nitrite') || journalText.includes('ammon')) { if(has(['cyclage','azote','bactéries'])) score += 7; }
+  if(journalText.includes('param'))         { if(has(['paramètres','kh','calcium']))                       score += 5; }
+  if(journalText.includes('corail') || journalText.includes('coral'))  { if(has(['coraux mous','acclimatation'])) score += 5; }
+  if(journalText.includes('supplé'))        { if(has(['supplémentation','kh','calcium','magnésium']))      score += 7; }
+  if(journalText.includes('souhaits') || journalText.includes('planif')){ if(has(['coraux mous','premiers'])) score += 4; }
+
+  // ── Bonus "toujours utile" pour les articles de fond ──
+  if(has(['débutant','questions'])) score += 1;
+
+  return score;
+}
+
+function pickNewsArticles(excludeIds=[]){
+  const ctx = buildNewsContext();
+  const candidates = ARTICLES_DB.filter(a => !excludeIds.includes(a.id));
+
+  const scored = candidates.map(a => ({...a, score: scoreArticle(a, ctx)}));
+
+  // Tri : score décroissant, égalité brisée aléatoirement pour la rotation
+  scored.sort((a,b) => b.score - a.score || Math.random() - 0.5);
+
+  // Garantir au moins 1 article de chaque source si dispo
+  const picked = [];
+  const bestRN = scored.find(a => a.src==='rn');
+  const bestAM = scored.find(a => a.src==='am');
+  if(bestRN) picked.push(bestRN);
+  if(bestAM && bestAM.id !== bestRN?.id) picked.push(bestAM);
+  for(const a of scored){
+    if(picked.length >= 3) break;
+    if(!picked.find(p => p.id === a.id)) picked.push(a);
+  }
+  return {articles: picked.slice(0, 3), ctx};
 }
 
 function whyArticle(art, ctx){
   const {tankAge, nFish, nCoral} = ctx;
-  if(art.tags.includes('cyclage') || art.tags.includes('azote'))
-    return tankAge < 30 ? 'Ton bac est en plein cyclage' : 'Comprendre la biologie de démarrage';
-  if(art.tags.includes('coraux mous') || art.tags.includes('acclimatation'))
-    return nCoral===0 ? 'Prépare l\'arrivée de tes premiers coraux' : 'Acclimater les nouveaux coraux';
-  if(art.tags.includes('paramètres') || art.tags.includes('kh'))
-    return 'Optimiser les paramètres pour les coraux';
-  if(art.tags.includes('poissons') || art.tags.includes('introduction'))
-    return nFish===0 ? 'Prêt pour les premiers poissons' : 'Bonne pratique d\'introduction';
-  if(art.tags.includes('algues') || art.tags.includes('cyanobactéries'))
-    return 'Prévenir les algues en phase de démarrage';
-  if(art.tags.includes('supplémentation'))
-    return 'La supplémentation quand les coraux arrivent';
-  return 'Article recommandé pour ton niveau';
+  const has = tags => tags.some(k => art.tags.includes(k));
+  if(has(['cyclage','azote','ammoniac','nitrites','maturation']))
+    return tankAge < 25 ? 'Ton bac est en plein cyclage' : 'Biologie de démarrage';
+  if(has(['bactéries','ensemencement','kit']))
+    return 'Les bactéries, la clé du démarrage';
+  if(has(['microfaune']))
+    return 'La microfaune, alliée invisible du bac';
+  if(has(['premiers','poissons']) && nFish === 0)
+    return 'Bientôt l\'heure des premiers poissons';
+  if(has(['coraux mous','soft corals','alcyonnaires']))
+    return nCoral === 0 ? 'Prépare les premiers coraux' : 'Coraux mous : lecture utile';
+  if(has(['acclimatation','dip']))
+    return 'Bien acclimater ses nouveaux arrivants';
+  if(has(['paramètres','kh','calcium','magnésium']))
+    return 'Paramètres clés pour les coraux';
+  if(has(['supplémentation']))
+    return 'Supplémentation : quand et comment';
+  if(has(['algues','cyanobactéries']))
+    return 'Prévenir les algues indésirables';
+  if(has(['icp','analyse eau']))
+    return 'Analyser l\'eau en détail';
+  return 'Lecture recommandée pour ton bac';
 }
 
 async function loadNewsFeed(force=false){
   const zone = document.getElementById('news-feed');
   if(!zone) return;
   if(newsFeedLoading) return;
-  if(newsFeedCache && !force){zone.innerHTML=newsFeedCache;return;}
-  newsFeedLoading=true;
+  if(newsFeedCache && !force){ zone.innerHTML=newsFeedCache; return; }
+  newsFeedLoading = true;
 
-  const tankAge = Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000);
-  const nFish   = animals.filter(a=>a.status==='tank').length;
-  const nCoral  = corals.filter(c=>c.status==='tank').length;
-  const ctx = {tankAge, nFish, nCoral};
+  // Sur rafraîchi forcé : exclure les IDs déjà vus pour assurer la rotation
+  // Réinitialise le cycle quand on a tout vu
+  if(newsSeenIds.length >= ARTICLES_DB.length - 2) newsSeenIds = [];
+  const exclude = force ? newsSeenIds : [];
 
-  const picked = pickNewsArticles();
+  const {articles: picked, ctx} = pickNewsArticles(exclude);
+  picked.forEach(a => { if(!newsSeenIds.includes(a.id)) newsSeenIds.push(a.id); });
+
   const html = picked.map(art=>`
     <a href="${art.url}" target="_blank" rel="noopener" style="text-decoration:none">
       <div class="news-card">
         <div class="news-card-top">
           <span class="news-source ${art.src}">${art.source}</span>
-          <span class="news-why">✦ ${whyArticle(art,ctx)}</span>
+          <span class="news-why">✦ ${whyArticle(art, ctx)}</span>
         </div>
         <div class="news-card-title">${art.title}</div>
         <div class="news-card-desc">${art.desc}</div>
