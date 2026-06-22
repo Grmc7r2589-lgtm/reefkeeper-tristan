@@ -2036,9 +2036,92 @@ const ARTICLES_DB = [
   {id:'am12',src:'am',source:'Aquamicrofaune',title:'Ce qu\'il faut savoir sur les kits d\'ensemencement',desc:'Comparatif des kits bactéries disponibles et comment bien les utiliser pour un démarrage rapide et efficace.',url:'https://www.aquamicrofaune.com/blog/ce-qu-il-faut-savoir-sur-les-kits-d-ensemencement-pour-aquariums.html',tags:['ensemencement','bactéries','kit','démarrage','cyclage']},
 ];
 
-// ── Fil d'actualités contextuelles via API Claude ─────────────────────────────
+// ── Fil d'actualités contextuelles — sélection locale par scoring ─────────────
 let newsFeedCache = null;
 let newsFeedLoading = false;
+
+function scoreArticle(art, ctx){
+  let score = 0;
+  const {tankAge, nFish, nCoral, nPlanned, hasNitrites, hasAmmoniac, journalText} = ctx;
+
+  // Score par tags en fonction du contexte
+  const add = (keywords, pts) => {
+    if(keywords.some(k => art.tags.includes(k) || art.title.toLowerCase().includes(k))) score += pts;
+  };
+
+  // Phase cyclage : bac jeune (<30j), pas de poissons, nitrites/ammoniac élevés
+  if(tankAge < 30) add(['cyclage','azote','ammoniac','nitrites','bactéries','démarrage','maturation'], 8);
+  if(hasNitrites || hasAmmoniac)    add(['cyclage','azote','ammoniac','nitrites'], 6);
+
+  // Phase post-cyclage prête pour poissons (30-60j, 0 poissons)
+  if(tankAge >= 25 && nFish === 0) add(['premiers','poissons','acclimatation','introduction'], 7);
+
+  // A des poissons, prêt pour coraux mous
+  if(nFish > 0 && nCoral === 0)   add(['coraux mous','soft corals','alcyonnaires','premier corail'], 8);
+  if(nPlanned > 0)                add(['acclimatation','dip','introduction','coraux mous','premiers'], 5);
+
+  // A des coraux → paramètres, supplémentation
+  if(nCoral > 0) add(['paramètres','kh','calcium','supplémentation','magnésium'], 7);
+  if(nCoral > 2) add(['icp','analyse eau','nitrates','phosphates'], 4);
+
+  // Mots-clés du journal
+  const jl = journalText.toLowerCase();
+  if(jl.includes('alg'))          add(['algues','cyanobactéries','phosphates','nitrates'], 5);
+  if(jl.includes('nitrite') || jl.includes('ammon')) add(['cyclage','azote','bactéries'], 6);
+  if(jl.includes('param'))        add(['paramètres','kh','calcium'], 4);
+  if(jl.includes('corail') || jl.includes('coral')) add(['coraux mous','acclimatation','dip'], 4);
+  if(jl.includes('supplé'))       add(['supplémentation','kh','calcium','magnésium'], 5);
+
+  // Légère préférence pour la diversité des sources
+  return score;
+}
+
+function pickNewsArticles(){
+  const tankAge = Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000);
+  const nFish   = animals.filter(a=>a.status==='tank').length;
+  const nCoral  = corals.filter(c=>c.status==='tank').length;
+  const nPlanned= corals.filter(c=>c.status==='planned').length + animals.filter(a=>a.status==='planned').length;
+  const lastMeasure = measures && measures.length ? measures[measures.length-1] : null;
+  const hasNitrites = lastMeasure && parseFloat(lastMeasure.no2||0) > 0.1;
+  const hasAmmoniac = lastMeasure && parseFloat(lastMeasure.nh3||0) > 0.05;
+  const journalText = journal.slice().reverse().slice(0,8).map(j=>j.title+' '+j.note).join(' ');
+
+  const ctx = {tankAge, nFish, nCoral, nPlanned, hasNitrites, hasAmmoniac, journalText};
+  const scored = ARTICLES_DB.map(a=>({...a, score:scoreArticle(a,ctx)}));
+  scored.sort((a,b)=>b.score-a.score);
+
+  // Garantit une diversité de sources (au moins 1 de chaque si possible)
+  const picked = [];
+  const byScore = [...scored];
+  // prendre le meilleur RN et le meilleur AM d'abord
+  const bestRN = byScore.find(a=>a.src==='rn');
+  const bestAM = byScore.find(a=>a.src==='am');
+  if(bestRN) picked.push(bestRN);
+  if(bestAM) picked.push(bestAM);
+  // compléter avec le suivant le mieux scoré pas encore dedans
+  for(const a of byScore){
+    if(picked.length >= 3) break;
+    if(!picked.find(p=>p.id===a.id)) picked.push(a);
+  }
+  return picked.slice(0,3);
+}
+
+function whyArticle(art, ctx){
+  const {tankAge, nFish, nCoral} = ctx;
+  if(art.tags.includes('cyclage') || art.tags.includes('azote'))
+    return tankAge < 30 ? 'Ton bac est en plein cyclage' : 'Comprendre la biologie de démarrage';
+  if(art.tags.includes('coraux mous') || art.tags.includes('acclimatation'))
+    return nCoral===0 ? 'Prépare l\'arrivée de tes premiers coraux' : 'Acclimater les nouveaux coraux';
+  if(art.tags.includes('paramètres') || art.tags.includes('kh'))
+    return 'Optimiser les paramètres pour les coraux';
+  if(art.tags.includes('poissons') || art.tags.includes('introduction'))
+    return nFish===0 ? 'Prêt pour les premiers poissons' : 'Bonne pratique d\'introduction';
+  if(art.tags.includes('algues') || art.tags.includes('cyanobactéries'))
+    return 'Prévenir les algues en phase de démarrage';
+  if(art.tags.includes('supplémentation'))
+    return 'La supplémentation quand les coraux arrivent';
+  return 'Article recommandé pour ton niveau';
+}
 
 async function loadNewsFeed(force=false){
   const zone = document.getElementById('news-feed');
@@ -2046,59 +2129,28 @@ async function loadNewsFeed(force=false){
   if(newsFeedLoading) return;
   if(newsFeedCache && !force){zone.innerHTML=newsFeedCache;return;}
   newsFeedLoading=true;
-  zone.innerHTML='<div class="news-loading">⏳ Sélection des actus pour ton bac...</div>';
 
-  // Contexte du bac
-  const journ = journal.slice().reverse().slice(0,5).map(j=>`${j.date}: ${j.title} — ${j.note}`).join('\n');
   const tankAge = Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000);
-  const nFish = animals.filter(a=>a.status==='tank').length;
-  const nCoral = corals.filter(c=>c.status==='tank').length;
-  const nPlanned = corals.filter(c=>c.status==='planned').length + animals.filter(a=>a.status==='planned').length;
-  const measures_recent = measures && measures.length ? measures.slice(-3).map(m=>`NH3:${m.nh3||'?'} NO2:${m.no2||'?'} NO3:${m.no3||'?'}`).join(' | ') : 'pas de mesures récentes';
+  const nFish   = animals.filter(a=>a.status==='tank').length;
+  const nCoral  = corals.filter(c=>c.status==='tank').length;
+  const ctx = {tankAge, nFish, nCoral};
 
-  const ctx = `Aquarium récifal Red Sea Reefer 300 XL G3, 300L, démarré le 8 juin 2026 (${tankAge} jours).
-Contenu actuel: ${nFish} poissons dans le bac, ${nCoral} coraux, ${nPlanned} en souhait.
-Paramètres récents: ${measures_recent}
-Dernières notes de journal:\n${journ||'(aucune)'}`;
-
-  const articlesStr = ARTICLES_DB.map((a,i)=>`[${a.id}] "${a.title}" (${a.source}) — tags: ${a.tags.join(', ')}`).join('\n');
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:400,
-        system:`Tu es un assistant aquariophile. Sélectionne exactement 3 articles de la liste ci-dessous qui sont les plus pertinents pour l'aquariophile en ce moment, selon son contexte de bac. Réponds UNIQUEMENT en JSON valide (aucun texte avant/après) : {"articles":[{"id":"...","why":"phrase courte (max 12 mots) expliquant pourquoi cet article est pertinent maintenant"},...]}`,
-        messages:[{role:'user',content:`Contexte du bac:\n${ctx}\n\nArticles disponibles:\n${articlesStr}`}]
-      })
-    });
-    const data = await res.json();
-    const text = data.content?.[0]?.text||'';
-    const clean = text.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
-    const selected = parsed.articles.slice(0,3).map(sel=>{
-      const art = ARTICLES_DB.find(a=>a.id===sel.id);
-      if(!art) return '';
-      return `<a href="${art.url}" target="_blank" rel="noopener" style="text-decoration:none">
-        <div class="news-card">
-          <div class="news-card-top">
-            <span class="news-source ${art.src}">${art.source}</span>
-            <span class="news-why">✦ ${sel.why}</span>
-          </div>
-          <div class="news-card-title">${art.title}</div>
-          <div class="news-card-desc">${art.desc}</div>
+  const picked = pickNewsArticles();
+  const html = picked.map(art=>`
+    <a href="${art.url}" target="_blank" rel="noopener" style="text-decoration:none">
+      <div class="news-card">
+        <div class="news-card-top">
+          <span class="news-source ${art.src}">${art.source}</span>
+          <span class="news-why">✦ ${whyArticle(art,ctx)}</span>
         </div>
-      </a>`;
-    }).join('');
-    newsFeedCache = selected;
-    zone.innerHTML = selected || '<div class="news-error">Aucune actu sélectionnée.</div>';
-  } catch(e) {
-    console.error('Actualités:', e);
-    zone.innerHTML='<div class="news-error">Actualités temporairement indisponibles.</div>';
-  }
-  newsFeedLoading=false;
+        <div class="news-card-title">${art.title}</div>
+        <div class="news-card-desc">${art.desc}</div>
+      </div>
+    </a>`).join('');
+
+  newsFeedCache = html;
+  zone.innerHTML = html || '<div class="news-error">Aucune actu disponible.</div>';
+  newsFeedLoading = false;
 }
 
 function renderJournal(){
