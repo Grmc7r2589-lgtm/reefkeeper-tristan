@@ -132,7 +132,6 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 .cnt::-webkit-scrollbar{width:2px}
 .cnt::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
 .pg{display:none;padding:14px;padding-bottom:24px;animation:fi .2s ease}
-@media(min-width:1100px){.pg{padding:24px 32px 32px}}
 .pg.active{display:block}
 @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 /* SECTION HDR */
@@ -330,7 +329,8 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 
 /* DESKTOP NAV — hidden by default, shown via JS on wide screens */
 #desktop-nav{display:none}
-#app-right{display:flex;flex-direction:column;flex:1;min-width:0;height:100%}
+/* app-right is a transparent wrapper on mobile, flex column on desktop */
+#app-right{display:contents}
 #login-screen{position:fixed;inset:0;z-index:500;background:linear-gradient(160deg,#03080f,#071a30);display:flex;align-items:center;justify-content:center;padding:24px}
 .login-card{width:100%;max-width:360px;background:linear-gradient(135deg,rgba(13,32,64,.95),rgba(7,21,37,.98));border:.5px solid rgba(45,142,232,.18);border-radius:var(--r);padding:32px 26px;text-align:center}
 .login-logo{font-size:38px;margin-bottom:8px}
@@ -2050,7 +2050,7 @@ async function moveCoral(id,status){
   const c=corals.find(x=>x.id===id);if(!c)return;
   const {error}=await sb.from('corals').update({status}).eq('id',id);
   if(error){console.error(error);toast('⚠️ Échec de la mise à jour');return}
-  c.status=status;renderCoraux();toast(status==='tank'?'✅ Corail dans le bac !':'Retiré du bac');
+  c.status=status;renderPop();toast(status==='tank'?'✅ Corail dans le bac !':'Retiré du bac');
 }
 function editCoral(id){
   const c=corals.find(x=>x.id===id);if(!c)return;
@@ -2167,9 +2167,11 @@ function buildNewsContext(){
   const nFish   = animals.filter(a=>a.status==='tank').length;
   const nCoral  = corals.filter(c=>c.status==='tank').length;
   const nPlanned= corals.filter(c=>c.status==='planned').length + animals.filter(a=>a.status==='planned').length;
-  const lastMeasure = measures && measures.length ? measures[measures.length-1] : null;
-  const hasNitrites = lastMeasure && parseFloat(lastMeasure.no2||0) > 0.1;
-  const hasAmmoniac = lastMeasure && parseFloat(lastMeasure.nh3||0) > 0.05;
+  const latest  = getLatest();
+  const no2m    = latest['no2'];
+  const nh3m    = latest['nh3'];
+  const hasNitrites = no2m  && parseFloat(no2m.value)  > 0.1;
+  const hasAmmoniac = nh3m  && parseFloat(nh3m.value)  > 0.05;
   const journalText = journal.slice().reverse().slice(0,10).map(j=>j.title+' '+j.note).join(' ').toLowerCase();
   return {tankAge, nFish, nCoral, nPlanned, hasNitrites, hasAmmoniac, journalText};
 }
@@ -2461,8 +2463,8 @@ function evaluateSpecies(sp, days, ownedKw){
   return {status, reasons, alreadyOwned};
 }
 
+let speciesDecisions={}; // {sci: 'adopted'|'eliminated'} — déclaré ici, initialisé dans loadAllData
 let decCategory='fish';
-let speciesDecisions={}; // {sci: 'adopted'|'eliminated'}
 let currentDeck=[];
 let swipeStartX=0, swipeStartY=0, swipeCurX=0, isDragging=false, activeCardEl=null;
 
@@ -2721,9 +2723,10 @@ async function decideSwipe(sci, decision, direction){
 async function addAdoptedSpecies(sp){
   const isCoral = SPECIES_DB.coral.includes(sp);
   if(isCoral){
-    const data={status:'planned',name:sp.name,type:'autre',emoji:sp.emoji,location:'',notes:sp.tips,photo_url:''};
+    const coralType = sp.subtype || 'autre';
+    const data={status:'planned',name:sp.name,type:coralType,emoji:sp.emoji,location:'',notes:sp.tips,photo_url:''};
     const {data:inserted,error}=await sb.from('corals').insert({owner_id:currentUser.id,...data}).select().single();
-    if(!error){ corals.push({id:inserted.id,status:'planned',name:sp.name,type:'autre',emoji:sp.emoji,photo:'',location:'',notes:sp.tips}); toast(`🪸 ${sp.name} ajouté à tes souhaits !`); }
+    if(!error){ corals.push({id:inserted.id,status:'planned',name:sp.name,type:coralType,emoji:sp.emoji,photo:'',location:'',notes:sp.tips}); toast(`🪸 ${sp.name} ajouté à tes souhaits !`); }
   }else{
     const cat = SPECIES_DB.inv.includes(sp) ? 'inv' : 'fish';
     const data={cat,status:'planned',name:sp.name,sci:sp.sci,emoji:sp.emoji,date:null,notes:sp.tips,photo_url:''};
@@ -2928,12 +2931,17 @@ function initDesktopNav(){
   if(isDesktop){
     dn.style.display='flex';
     ar.style.display='flex';
+    ar.style.flexDirection='column';
+    ar.style.flex='1';
+    ar.style.minWidth='0';
+    ar.style.height='100%';
     // Sync email
     const de=document.getElementById('dnav-user-email');
     if(de)de.textContent=(currentUser&&currentUser.email)||'—';
   }else{
     dn.style.display='none';
-    ar.style.display='';
+    // Sur mobile, app-right est transparent (display:contents)
+    ar.style.display='contents';
   }
 }
 window.addEventListener('resize',initDesktopNav);
