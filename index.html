@@ -166,6 +166,24 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 .tip-li:last-child{margin-bottom:0}
 /* JOURNAL */
 .je{padding:11px 0;border-bottom:.5px solid rgba(45,142,232,.07);cursor:pointer}
+
+/* ACTUALITÉS RÉCIFALES */
+.news-section{margin-top:22px}
+.news-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.news-header-icon{font-size:18px}
+.news-header-text{font-size:14px;font-weight:700;color:var(--t1)}
+.news-header-sub{font-size:11px;color:var(--t3);margin-left:auto}
+.news-card{background:linear-gradient(160deg,rgba(13,32,64,.9),rgba(7,21,37,.95));border:.5px solid rgba(45,142,232,.18);border-radius:var(--rs);padding:12px 13px;margin-bottom:9px;cursor:pointer;transition:border-color .15s}
+.news-card:active{border-color:rgba(45,142,232,.5)}
+.news-card-top{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.news-source{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 7px;border-radius:6px}
+.news-source.rn{color:#1775b6;background:rgba(23,117,182,.12);border:.5px solid rgba(23,117,182,.25)}
+.news-source.am{color:#2a9d6b;background:rgba(42,157,107,.12);border:.5px solid rgba(42,157,107,.25)}
+.news-why{font-size:10px;color:var(--teal);font-style:italic;flex:1;text-align:right}
+.news-card-title{font-size:13px;font-weight:600;color:var(--t1);line-height:1.35;margin-bottom:3px}
+.news-card-desc{font-size:11px;color:var(--t3);line-height:1.4}
+.news-loading{text-align:center;padding:18px 0;color:var(--t4);font-size:12px}
+.news-error{text-align:center;padding:12px 0;color:var(--t4);font-size:11px;font-style:italic}
 .je:last-child{border-bottom:none}
 .je-dot{width:7px;height:7px;border-radius:50%;background:var(--o3);flex-shrink:0;margin-top:4px}
 .je-dot.t{background:var(--teal)}.je-dot.a{background:var(--amber)}.je-dot.r{background:var(--red)}
@@ -454,7 +472,14 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
       <input class="srch" id="j-search" placeholder="Rechercher dans le journal..." oninput="renderJournal()">
       <div class="sh"><span class="shl">Entrées</span><span class="shr" onclick="openModal('modal-journal')">+ Nouvelle</span></div>
       <div class="gl" id="journal-list"></div>
-    </div>
+      <div class="news-section">
+        <div class="news-header">
+          <span class="news-header-icon">📡</span>
+          <span class="news-header-text">Actus pour ton bac</span>
+          <span class="news-header-sub" id="news-refresh" onclick="loadNewsFeed(true)" style="cursor:pointer">↺ Rafraîchir</span>
+        </div>
+        <div id="news-feed"><div class="news-loading">Chargement des actualités...</div></div>
+      </div>
 
     <!-- DÉCOUVERTES -->
     <div class="pg" id="pg-decouvertes">
@@ -1980,6 +2005,102 @@ function renderCoraux(){
 // ═══════════════════════════════════════════
 // JOURNAL
 // ═══════════════════════════════════════════
+// ── Base d'articles récifaux curatiés ────────────────────────────────────────
+const ARTICLES_DB = [
+  // === RÉCIFAL NEWS ===
+  {id:'rn01',src:'rn',source:'Récifal News',title:'Démarrer mon premier bac récifal EP#03 : le cyclage à l\'ammoniaque',desc:'Méthode pas-à-pas pour cycler un récifal : ammoniac, nitrites, nitrates. Parfait si ton bac est en phase de démarrage.',url:'https://recifalnews.fr/2025/03/demarrer-mon-premier-bac-recifal-ep03-le-cyclage-dun-bac-recifal-a-lammoniaque/',tags:['cyclage','azote','ammoniac','nitrites','démarrage','bactéries']},
+  {id:'rn02',src:'rn',source:'Récifal News',title:'Mon premier bac récifal EP#04 : les premiers poissons',desc:'Après le cyclage, comment choisir et acclimater les premiers poissons. Gramma loreto et Ecsenius stigmatura en exemple.',url:'https://recifalnews.fr/2025/07/mon-premier-bac-recifal-ep04-les-premiers-poissons/',tags:['poissons','acclimatation','premiers','introduction','cyclage terminé']},
+  {id:'rn03',src:'rn',source:'Récifal News',title:'La base du récifal #2 : Acclimater ses coraux',desc:'Comment acclimater des coraux à leur arrivée : bain antiparasitaire, température, lumière. Incontournable avant le premier corail.',url:'https://recifalnews.fr/2022/07/la-base-du-recifal-2-acclimater-ses-coraux/',tags:['coraux','acclimatation','introduction','dip','coraux mous']},
+  {id:'rn04',src:'rn',source:'Récifal News',title:'Vlog #3 : démarrage et cyclage du nano récifal',desc:'La biologie du cycle de l\'azote expliquée en pratique sur un aquarium nano. Flore bactérienne et maturation.',url:'https://recifalnews.fr/2018/06/vlog3-axel-cyclage-aquarium-recifal-nano/',tags:['cyclage','azote','bactéries','démarrage','nano','maturation']},
+  {id:'rn05',src:'rn',source:'Récifal News',title:'Mon premier bac récifal EP#10 : la supplémentation',desc:'Calcium, KH, magnésium : quand et comment supplémenter pour les coraux. Lecture utile quand le bac mûrit.',url:'https://recifalnews.fr/2026/06/mon-premier-bac-recifal-ep10-la-supplementation/',tags:['supplémentation','calcium','kh','magnésium','coraux','paramètres']},
+  {id:'rn06',src:'rn',source:'Récifal News',title:'AquaWiz 5ème génération : il mesure le KH pour toi',desc:'L\'AquaWiz automatise les mesures de KH et la supplémentation. Utile dès que les coraux consomment de l\'alcalinité.',url:'https://recifalnews.fr/2026/06/aquawiz-5eme-generation-il-mesure-le-kh-pour-toi/',tags:['kh','alcalinité','mesure','automatisation','matériel','coraux durs']},
+  {id:'rn07',src:'rn',source:'Récifal News',title:'Nouvel écumeur DC chez ASF',desc:'Écumeur externe jusqu\'à 200L pour bacs sans décantation. Utile si l\'écume commence à poser problème.',url:'https://recifalnews.fr/2026/05/nouvel-ecumeur-dc-chez-asf/',tags:['écumeur','matériel','filtration','eau de mer']},
+  {id:'rn08',src:'rn',source:'Récifal News',title:'Zoanthus LAB : ICP, supplémentation et Aqua Manager',desc:'Tests ICP pour analyser en détail les paramètres de l\'eau récifale, avec retour gratuit.',url:'https://recifalnews.fr/2026/05/zoanthus-lab-icp-supplementation-et-aqua-manager/',tags:['icp','paramètres','analyse','eau','magnésium','calcium']},
+  {id:'rn09',src:'rn',source:'Récifal News',title:'Vlog : des coraux dans le nano !',desc:'Premier ajout de coraux (Ricordea, Discosoma, LPS) avec détail du dip, de l\'emballage et de la mise en place.',url:'https://recifalnews.fr/2018/08/vlog-5-axel-des-coraux-dans-le-nano/',tags:['coraux mous','LPS','ricordea','discosoma','premier corail','acclimatation','dip']},
+  {id:'rn10',src:'rn',source:'Récifal News',title:'ICP Fauna Marin : envoyez vos échantillons plus vite et moins cher',desc:'Comment envoyer facilement un échantillon d\'eau pour analyse ICP complète via Aquarioom.',url:'https://recifalnews.fr/2026/05/icp-fauna-marin-envoyez-vos-echantillons-rapidement-et-cher/',tags:['icp','paramètres','analyse eau','nitrates','phosphates']},
+  {id:'rn11',src:'rn',source:'Récifal News',title:'Nano récifal : foire aux questions',desc:'FAQ complète sur le démarrage d\'un bac récifal : cyclage, premiers coraux, paramètres, algues.',url:'https://recifalnews.fr/2019/01/nano-recifal-35-litres-foire-aux-questions/',tags:['démarrage','cyclage','paramètres','algues','coraux','débutant']},
+  {id:'rn12',src:'rn',source:'Récifal News',title:'Prodibio par Red Sea : l\'avenir des ampoules aquariophiles',desc:'Rachat de Prodibio par Red Sea : impact sur les produits bactéries et démarrage de bac.',url:'https://recifalnews.fr/2026/06/prodibio-par-red-sea-le-projet-et-les-reponses-a-nos-questions/',tags:['bactéries','ensemencement','démarrage','produits']},
+  {id:'rn13',src:'rn',source:'Récifal News',title:'Interzoo 2026 : nouveautés Red Sea',desc:'Découverte des nouvelles gammes Red Sea : aquariums, supplémentation, traitements, matériel récifal.',url:'https://recifalnews.fr/2026/05/interzoo-2026-nouveautes-red-sea/',tags:['matériel','red sea','nouveau','équipement']},
+  // === AQUAMICROFAUNE ===
+  {id:'am01',src:'am',source:'Aquamicrofaune',title:'Le cyclage d\'un aquarium d\'eau de mer récifal',desc:'Tout sur la phase de cyclage d\'un récifal : bactéries, maturation, durée. La référence si tu es en phase de démarrage.',url:'https://www.aquamicrofaune.com/blog/le-cyclage-d-une-aquarium-d-eau-de-mer-recifal.html',tags:['cyclage','azote','bactéries','démarrage','maturation','ammoniac','nitrites']},
+  {id:'am02',src:'am',source:'Aquamicrofaune',title:'Les bactéries en récifal — bien plus importantes qu\'on ne le pense',desc:'Rôle des bactéries nitrifiantes ET de la microfaune dans l\'équilibre du bac. Lecture clé en phase de démarrage.',url:'https://www.aquamicrofaune.com/blog/les-bacteries-en-recifal-plus-importante-encore-qu-on-ne-le-pense.html',tags:['bactéries','cyclage','azote','microfaune','démarrage','cycle']},
+  {id:'am03',src:'am',source:'Aquamicrofaune',title:'Un récifal de coraux mous — un vrai choix d\'aquariophile',desc:'Pourquoi les coraux mous sont idéals pour débuter : tolérance, esthétique, maintenance allégée.',url:'https://www.aquamicrofaune.com/blog/un-recifal-de-coraux-mous-un-vrai-choix-d-aquariophile.html',tags:['coraux mous','soft corals','débutant','alcyonnaires','maintenance']},
+  {id:'am04',src:'am',source:'Aquamicrofaune',title:'Un récifal de coraux mous, c\'est plus cool',desc:'Comparatif coraux mous vs durs : conditions d\'eau, éclairage, exigences. Lecture utile avant d\'introduire les premiers mous.',url:'https://www.aquamicrofaune.com/blog/un-recifal-de-coraux-mous-c-est-plus-cool.html',tags:['coraux mous','LPS','paramètres','nitrates','phosphates','éclairage']},
+  {id:'am05',src:'am',source:'Aquamicrofaune',title:'Mes paramètres idéaux en aquarium récifal',desc:'Les valeurs cibles de température, salinité, pH, KH, calcium, nitrates expliquées par un professionnel.',url:'https://www.aquamicrofaune.com/blog/les-parametres-ideaux-en-aquarium-recifal.html',tags:['paramètres','température','salinité','ph','kh','calcium','nitrates']},
+  {id:'am06',src:'am',source:'Aquamicrofaune',title:'Débuter simplement en aquariophilie d\'eau de mer',desc:'Guide complet pour débuter en récifal : maturation, bactéries, microfaune. Recommandé dès le lancement du bac.',url:'https://www.aquamicrofaune.com/blog/debuter-simplement-en-aquariophilie-d-eau-de-mer-recifal.html',tags:['débutant','démarrage','cyclage','bactéries','récifal']},
+  {id:'am07',src:'am',source:'Aquamicrofaune',title:'Les kits de démarrage pour récifal',desc:'Comment fonctionnent les kits bactéries + microfaune pour démarrer un bac récifal en accéléré.',url:'https://www.aquamicrofaune.com/blog/les-kits-de-demarrage-pour-recifal.html',tags:['démarrage','bactéries','microfaune','kit','cyclage','ensemencement']},
+  {id:'am08',src:'am',source:'Aquamicrofaune',title:'Les cyanobactéries, dinoflagellés et algues — la cause profonde',desc:'Comprendre pourquoi cyanos et algues envahissent le bac : déséquilibre bactérien et microfaune insuffisante.',url:'https://www.aquamicrofaune.com/blog/cyanobacteries-dinoflagelles-et-algues-en-aquarium-la-cause-profonde.html',tags:['algues','cyanobactéries','dinoflagellés','déséquilibre','nitrates','phosphates']},
+  {id:'am09',src:'am',source:'Aquamicrofaune',title:'Choisir un aquarium d\'eau de mer tout équipé pour débuter ?',desc:'Faut-il choisir un bac tout-en-un comme un Reefer pour débuter en récifal ? Avantages et limites.',url:'https://www.aquamicrofaune.com/blog/choisir-ou-non-un-aquarium-d-eau-de-mer-tout-equipe-pour-debuter.html',tags:['matériel','tout en un','reefer','débutant','aquarium']},
+  {id:'am10',src:'am',source:'Aquamicrofaune',title:'État des lieux sur les bactéries en aquarium',desc:'Synthèse scientifique sur les différentes bactéries utiles en récifal : nitrifiantes, dénitrifiantes, hétérotrophes.',url:'https://www.aquamicrofaune.com/blog/tat-des-lieux-des-connaissances-sur-les-bacteries-pour-aquarium.html',tags:['bactéries','cycle azote','nitrification','dénitrification','biologie']},
+  {id:'am11',src:'am',source:'Aquamicrofaune',title:'Le démarrage d\'un récifal : questions / réponses',desc:'Les questions les plus fréquentes sur le démarrage d\'un récifal répondues par un aquariologue pro.',url:'https://www.aquamicrofaune.com/blog/le-demarrage-d-un-aquarium-d-eau-de-mer-recifal-questions-reponses.html',tags:['démarrage','questions','cyclage','poissons','coraux','débutant']},
+  {id:'am12',src:'am',source:'Aquamicrofaune',title:'Ce qu\'il faut savoir sur les kits d\'ensemencement',desc:'Comparatif des kits bactéries disponibles et comment bien les utiliser pour un démarrage rapide et efficace.',url:'https://www.aquamicrofaune.com/blog/ce-qu-il-faut-savoir-sur-les-kits-d-ensemencement-pour-aquariums.html',tags:['ensemencement','bactéries','kit','démarrage','cyclage']},
+];
+
+// ── Fil d'actualités contextuelles via API Claude ─────────────────────────────
+let newsFeedCache = null;
+let newsFeedLoading = false;
+
+async function loadNewsFeed(force=false){
+  const zone = document.getElementById('news-feed');
+  if(!zone) return;
+  if(newsFeedLoading) return;
+  if(newsFeedCache && !force){zone.innerHTML=newsFeedCache;return;}
+  newsFeedLoading=true;
+  zone.innerHTML='<div class="news-loading">⏳ Sélection des actus pour ton bac...</div>';
+
+  // Contexte du bac
+  const journ = journal.slice().reverse().slice(0,5).map(j=>`${j.date}: ${j.title} — ${j.note}`).join('\n');
+  const tankAge = Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000);
+  const nFish = animals.filter(a=>a.status==='tank').length;
+  const nCoral = corals.filter(c=>c.status==='tank').length;
+  const nPlanned = corals.filter(c=>c.status==='planned').length + animals.filter(a=>a.status==='planned').length;
+  const measures_recent = measures && measures.length ? measures.slice(-3).map(m=>`NH3:${m.nh3||'?'} NO2:${m.no2||'?'} NO3:${m.no3||'?'}`).join(' | ') : 'pas de mesures récentes';
+
+  const ctx = `Aquarium récifal Red Sea Reefer 300 XL G3, 300L, démarré le 8 juin 2026 (${tankAge} jours).
+Contenu actuel: ${nFish} poissons dans le bac, ${nCoral} coraux, ${nPlanned} en souhait.
+Paramètres récents: ${measures_recent}
+Dernières notes de journal:\n${journ||'(aucune)'}`;
+
+  const articlesStr = ARTICLES_DB.map((a,i)=>`[${a.id}] "${a.title}" (${a.source}) — tags: ${a.tags.join(', ')}`).join('\n');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:400,
+        system:`Tu es un assistant aquariophile. Sélectionne exactement 3 articles de la liste ci-dessous qui sont les plus pertinents pour l'aquariophile en ce moment, selon son contexte de bac. Réponds UNIQUEMENT en JSON valide (aucun texte avant/après) : {"articles":[{"id":"...","why":"phrase courte (max 12 mots) expliquant pourquoi cet article est pertinent maintenant"},...]}`,
+        messages:[{role:'user',content:`Contexte du bac:\n${ctx}\n\nArticles disponibles:\n${articlesStr}`}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text||'';
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    const selected = parsed.articles.slice(0,3).map(sel=>{
+      const art = ARTICLES_DB.find(a=>a.id===sel.id);
+      if(!art) return '';
+      return `<a href="${art.url}" target="_blank" rel="noopener" style="text-decoration:none">
+        <div class="news-card">
+          <div class="news-card-top">
+            <span class="news-source ${art.src}">${art.source}</span>
+            <span class="news-why">✦ ${sel.why}</span>
+          </div>
+          <div class="news-card-title">${art.title}</div>
+          <div class="news-card-desc">${art.desc}</div>
+        </div>
+      </a>`;
+    }).join('');
+    newsFeedCache = selected;
+    zone.innerHTML = selected || '<div class="news-error">Aucune actu sélectionnée.</div>';
+  } catch(e) {
+    console.error('Actualités:', e);
+    zone.innerHTML='<div class="news-error">Actualités temporairement indisponibles.</div>';
+  }
+  newsFeedLoading=false;
+}
+
 function renderJournal(){
   const q=(document.getElementById('j-search')?.value||'').toLowerCase();
   const el=document.getElementById('journal-list');
@@ -2002,6 +2123,8 @@ function renderJournal(){
         </div>
       </div>
     </div>`).join('');
+  // Charge les actus si on est sur le journal sans recherche active
+  if(!q) loadNewsFeed();
 }
 let pendingJnPhoto=null;
 function previewJournalPhoto(inp){
