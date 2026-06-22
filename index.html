@@ -2254,6 +2254,24 @@ function findCatalogPhoto(coralName){
   return match && match.photo ? match.photo : null;
 }
 
+// ── Utilitaires globaux (définis tôt pour être disponibles partout) ─────────
+const DISC_CATS=[{key:'fish',label:'🐟 Poissons'},{key:'coral',label:'🪸 Coraux'},{key:'inv',label:'🦐 Invertébrés'}];
+function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function priceIndicator(price){
+  if(price===null||price===undefined)return null;
+  let symbol;
+  if(price<26)symbol='€';
+  else if(price<44)symbol='€€';
+  else if(price<66)symbol='€€€';
+  else symbol='€€€€';
+  return {symbol,exact:price};
+}
+function priceLabelHTML(price){
+  const ind=priceIndicator(price);
+  if(!ind)return '<span class="price-na">Prix non disponible</span>';
+  return `<span class="price-tag" title="${ind.exact.toFixed(2)} €">${ind.symbol} · ${ind.exact.toFixed(2)} €</span>`;
+}
+
 function getOwnedKeywords(){
   // Construit la liste de mots-clés (genre/espèce/famille) déjà présents
   // ou prévus dans le bac, pour détecter les incompatibilités.
@@ -2366,7 +2384,7 @@ function renderEliminatedList(){
         <div class="cn">${sp.name}</div>
         <div class="cs">${sp.sci}</div>
       </div>
-      <button class="btn btn-g btn-sm" onclick="restoreSpecies('${sp.sci}')">↩️ Revoir</button>
+      <button class="btn btn-g btn-sm" data-sci="${escAttr(sp.sci)}" onclick="restoreSpecies(this.dataset.sci)">↩️ Revoir</button>
     </div>`).join('');
 }
 
@@ -2426,26 +2444,6 @@ function renderSwipeZone(){
   html+=`<div class="sw-actions"><button class="sw-btn sw-btn-nope" onclick="swipeButton('nope')">✕</button><button class="sw-btn sw-btn-like" onclick="swipeButton('like')">♥</button></div>`;
   zone.innerHTML=html;
   activeCardEl=document.getElementById('sw-top-card');
-}
-
-// ── Grille "Tout découvrir" : parcourir toute la bibliothèque sans swiper ──
-const DISC_CATS=[{key:'fish',label:'🐟 Poissons'},{key:'coral',label:'🪸 Coraux'},{key:'inv',label:'🦐 Invertébrés'}];
-function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
-
-// ── Indice de prix € / €€ / €€€ / €€€€ basé sur les paliers observés chez Masterfisch ──
-function priceIndicator(price){
-  if(price===null||price===undefined)return null;
-  let symbol;
-  if(price<26)symbol='€';
-  else if(price<44)symbol='€€';
-  else if(price<66)symbol='€€€';
-  else symbol='€€€€';
-  return {symbol,exact:price};
-}
-function priceLabelHTML(price){
-  const ind=priceIndicator(price);
-  if(!ind)return '<span class="price-na">Prix non disponible</span>';
-  return `<span class="price-tag" title="${ind.exact.toFixed(2)} €">${ind.symbol} · ${ind.exact.toFixed(2)} €</span>`;
 }
 
 function renderDiscoveryGrid(){
