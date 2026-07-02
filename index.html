@@ -2314,8 +2314,21 @@ async function loadNewsFeed(force=false){
       </div>
     </a>`).join('');
 
-  newsFeedCache = html;
-  zone.innerHTML = html || '<div class="news-error">Aucune actu disponible.</div>';
+  // ── Outil permanent : identification des algues indésirables ──
+  const algaeCard = `
+    <a href="https://www.reefcleaners.org/nuisance-algae-id-guide" target="_blank" rel="noopener" style="text-decoration:none">
+      <div class="news-card" style="border-color:rgba(42,157,107,.35)">
+        <div class="news-card-top">
+          <span class="news-source am">Guide · ReefCleaners</span>
+          <span class="news-why">🔎 Outil pratique</span>
+        </div>
+        <div class="news-card-title">Identifier les algues indésirables</div>
+        <div class="news-card-desc">Guide visuel complet (photos + traitements) pour reconnaître diatomées, cyano, algues filamenteuses, bulles, dinos… et savoir comment s'en débarrasser.</div>
+      </div>
+    </a>`;
+
+  newsFeedCache = html + algaeCard;
+  zone.innerHTML = newsFeedCache || '<div class="news-error">Aucune actu disponible.</div>';
   newsFeedLoading = false;
 }
 
