@@ -735,7 +735,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
       </label>
       <div id="am-photo-preview" style="margin-top:7px"></div>
     </div>
-    <button class="btn btn-o" onclick="addMeasure()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-o" onclick="guarded('addMeasure')" style="margin-bottom:8px">Enregistrer</button>
     <button class="btn btn-g" onclick="closeModal('modal-mesure')" style="width:100%">Annuler</button>
   </div>
 </div>
@@ -760,7 +760,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     </div>
     <input type="hidden" id="an-id" value="">
     <input type="hidden" id="an-photo" value="">
-    <button class="btn btn-o" onclick="saveAnimal()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-o" onclick="guarded('saveAnimal')" style="margin-bottom:8px">Enregistrer</button>
     <button class="btn btn-g" onclick="closeModal('modal-animal')" style="width:100%">Annuler</button>
   </div>
 </div>
@@ -784,7 +784,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     </div>
     <input type="hidden" id="co-id" value="">
     <input type="hidden" id="co-photo" value="">
-    <button class="btn btn-t" onclick="saveCoral()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-t" onclick="guarded('saveCoral')" style="margin-bottom:8px">Enregistrer</button>
     <button class="btn btn-g" onclick="closeModal('modal-coral')" style="width:100%">Annuler</button>
   </div>
 </div>
@@ -816,7 +816,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
       <div id="jn-photo-preview" style="margin-top:7px"></div>
     </div>
     <input type="hidden" id="jn-photo" value="">
-    <button class="btn btn-o" onclick="saveJournal()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-o" onclick="guarded('saveJournal')" style="margin-bottom:8px">Enregistrer</button>
     <button class="btn btn-g" onclick="closeModal('modal-journal')" style="width:100%">Annuler</button>
   </div>
 </div>
@@ -832,7 +832,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     <div class="fd"><label>Garantie (mois)</label><input type="number" id="eq-warranty" placeholder="Ex : 24"></div>
     <div class="fd"><label>Emoji</label><input type="text" id="eq-emoji" placeholder="⚙️" maxlength="4" style="font-size:20px;text-align:center"></div>
     <input type="hidden" id="eq-id" value="">
-    <button class="btn btn-o" onclick="saveEquip()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-o" onclick="guarded('saveEquip')" style="margin-bottom:8px">Enregistrer</button>
     <button class="btn btn-g" onclick="closeModal('modal-equip')" style="width:100%">Annuler</button>
   </div>
 </div>
@@ -855,7 +855,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     </div>
     <input type="hidden" id="em-id">
     <input type="hidden" id="em-photo">
-    <button class="btn btn-o" onclick="saveEditMeasure()" style="margin-bottom:8px">Enregistrer</button>
+    <button class="btn btn-o" onclick="guarded('saveEditMeasure')" style="margin-bottom:8px">Enregistrer</button>
     <button class="btn btn-g" onclick="closeModal('modal-edit-measure')" style="width:100%">Annuler</button>
   </div>
 </div>
@@ -1178,6 +1178,27 @@ function showSyncStatus(msg, isError){
 }
 
 // ── AUTHENTIFICATION ──
+// ── FIABILITÉ ──
+// Filet global : toute promesse rejetée non gérée (ex: réseau coupé pendant
+// un appel Supabase) affiche un message au lieu d'échouer en silence.
+window.addEventListener('unhandledrejection', ev=>{
+  console.error('Unhandled rejection:', ev.reason);
+  const msg = navigator.onLine===false ? '📡 Hors ligne — action non enregistrée' : '⚠️ Erreur réseau — réessaie';
+  if(typeof toast==='function') toast(msg);
+  ev.preventDefault();
+});
+// Détection de connexion : bannière quand on passe hors ligne / en ligne.
+window.addEventListener('offline', ()=>showSyncStatus('📡 Hors ligne — les modifications ne seront pas enregistrées', true));
+window.addEventListener('online', ()=>showSyncStatus('✓ Connexion rétablie', false));
+// Anti double-tap : verrouille une fonction async le temps de son exécution.
+// Usage dans le HTML : onclick="guarded('saveAnimal')"
+const _fnLocks={};
+async function guarded(fnName){
+  if(_fnLocks[fnName])return;
+  _fnLocks[fnName]=true;
+  try{ await window[fnName](); }
+  finally{ _fnLocks[fnName]=false; }
+}
 async function checkSession(){
   const {data:{session}}=await sb.auth.getSession();
   if(session?.user){
@@ -1861,7 +1882,7 @@ async function saveEditMeasure(){
   let photoUrl=document.getElementById('em-photo').value;
   if(pendingEditMeasurePhoto){
     toast('📤 Envoi de la photo...');
-    photoUrl=await uploadPhoto(pendingEditMeasurePhoto,'measures');
+    const up=await uploadPhoto(pendingEditMeasurePhoto,'measures');if(up)photoUrl=up;else toast('⚠️ Ancienne photo conservée');
   }
   const {error}=await sb.from('measures').update({value:v,comment,photo_url:photoUrl}).eq('id',id);
   if(error){console.error(error);toast('⚠️ Échec de la modification');return}
@@ -2026,7 +2047,7 @@ async function saveAnimal(){
   let photoUrl=document.getElementById('an-photo').value;
   if(pendingAnPhoto){
     toast('📤 Envoi de la photo...');
-    photoUrl=await uploadPhoto(pendingAnPhoto,'animals');
+    const up=await uploadPhoto(pendingAnPhoto,'animals');if(up)photoUrl=up;else if(photoUrl)toast('⚠️ Ancienne photo conservée');
   }
   const data={cat:document.getElementById('an-cat').value,status:document.getElementById('an-status').value,name,sci:document.getElementById('an-sci').value.trim(),emoji:document.getElementById('an-emoji').value||'🐟',date:document.getElementById('an-date').value||null,notes:document.getElementById('an-notes').value.trim(),photo_url:photoUrl};
   if(id){
@@ -2140,7 +2161,7 @@ async function saveCoral(){
   let photoUrl=document.getElementById('co-photo').value;
   if(pendingCoPhoto){
     toast('📤 Envoi de la photo...');
-    photoUrl=await uploadPhoto(pendingCoPhoto,'corals');
+    const up=await uploadPhoto(pendingCoPhoto,'corals');if(up)photoUrl=up;else if(photoUrl)toast('⚠️ Ancienne photo conservée');
   }
   const data={status:document.getElementById('co-status').value,name,type:document.getElementById('co-type').value,emoji:document.getElementById('co-emoji').value||'🪸',location:document.getElementById('co-location').value.trim(),notes:document.getElementById('co-notes').value.trim(),photo_url:photoUrl};
   if(id){
@@ -2448,7 +2469,7 @@ async function saveJournal(){
   let photoUrl=document.getElementById('jn-photo').value||'';
   if(pendingJnPhoto){
     toast('📤 Envoi de la photo...');
-    photoUrl=await uploadPhoto(pendingJnPhoto,'journal');
+    const up=await uploadPhoto(pendingJnPhoto,'journal');if(up)photoUrl=up;else if(photoUrl)toast('⚠️ Ancienne photo conservée');
   }
   const cat=document.getElementById('jn-cat').value;
   const note=document.getElementById('jn-note').value.trim();
@@ -3107,11 +3128,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     }
   },{passive:false});
 
-  const hasSession=await checkSession();
-  if(hasSession){
-    await startApp();
-  }else{
+  try{
+    const hasSession=await checkSession();
+    if(hasSession){
+      await startApp();
+    }else{
+      showLoginScreen();
+    }
+  }catch(err){
+    // Réseau indisponible au démarrage : on ne laisse pas un écran figé.
+    console.error('Boot error:', err);
     showLoginScreen();
+    showSyncStatus('⚠️ Impossible de contacter le serveur — vérifie ta connexion puis recharge', true);
   }
   // Réagit à une déconnexion déclenchée ailleurs (ex: token expiré)
   sb.auth.onAuthStateChange((event)=>{
