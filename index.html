@@ -279,7 +279,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 @media(min-width:1100px){.gg{grid-template-columns:repeat(6,1fr)}}
 .gc{aspect-ratio:1;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;overflow:hidden;position:relative}
 .gc img{width:100%;height:100%;object-fit:cover}
-.gc-del{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+.gc-del{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;z-index:2}
 /* TOGGLE */
 .tgr{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:.5px solid rgba(45,142,232,.07)}
 .tgr:last-child{border-bottom:none}
@@ -296,6 +296,13 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 @keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .mh{width:38px;height:4px;background:rgba(45,142,232,.3);border-radius:2px;margin:0 auto 15px}
 .mt{font-size:19px;font-weight:700;margin-bottom:15px;background:linear-gradient(90deg,var(--t1),var(--o4));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+/* ACTION SHEET (menu contextuel unifié) */
+.as-item{display:flex;align-items:center;gap:14px;width:100%;padding:16px 6px;font-size:15px;font-weight:600;color:var(--t1);background:none;border:none;border-bottom:.5px solid rgba(45,142,232,.08);cursor:pointer;text-align:left;-webkit-tap-highlight-color:rgba(45,142,232,.15)}
+.as-item:last-child{border-bottom:none}
+.as-item:active{background:rgba(45,142,232,.08)}
+.as-item.danger{color:var(--red)}
+.as-icon{font-size:19px;width:26px;text-align:center;flex-shrink:0}
+.as-title{font-size:14px;color:var(--t3);font-weight:600;margin-bottom:6px;padding:0 6px}
 /* TOAST */
 .toast{position:fixed;bottom:calc(var(--tbh) + var(--sb) + 10px);left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--o1),var(--o2));color:#fff;padding:9px 20px;border-radius:30px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(26,108,196,.5);animation:ta 2.3s ease forwards}
 @keyframes ta{0%{opacity:0;transform:translateX(-50%) translateY(8px)}12%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
@@ -551,7 +558,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
           <option value="mg">Magnésium</option><option value="po4">PO₄</option>
         </select>
       </div>
-      <div id="hcw" class="gl"><div class="cw"><canvas id="hch"></canvas></div></div>
+      <div id="hcw" class="gl"><div class="cw"><canvas id="hch"></canvas></div><div id="hch-list"></div></div>
       <div id="htw" class="gl" style="display:none">
         <table style="width:100%;font-size:12px;border-collapse:collapse">
           <thead><tr>
@@ -583,7 +590,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     <!-- JOURNAL -->
     <div class="pg" id="pg-journal">
       <input class="srch" id="j-search" placeholder="Rechercher dans le journal..." oninput="renderJournal()">
-      <div class="sh"><span class="shl">Entrées</span><span class="shr" onclick="openModal('modal-journal')">+ Nouvelle</span></div>
+      <div class="sh"><span class="shl">Entrées</span><span class="shr" onclick="resetJournalForm();openModal('modal-journal')">+ Nouvelle</span></div>
       <div class="gl" id="journal-list"></div>
       <div class="news-section">
         <div class="news-header">
@@ -785,7 +792,8 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 <!-- MODAL JOURNAL -->
 <div class="mo" id="modal-journal">
   <div class="mdl">
-    <div class="mh"></div><div class="mt">Nouvelle entrée</div>
+    <div class="mh"></div><div class="mt" id="jn-modal-title">Nouvelle entrée</div>
+    <input type="hidden" id="jn-id" value="">
     <div class="fd"><label>Titre</label><input type="text" id="jn-title" placeholder="Ex : Observation pierres vivantes"></div>
     <div class="fd"><label>Catégorie</label>
       <select id="jn-cat">
@@ -852,6 +860,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
   </div>
 </div>
 
+<div class="mo" id="modal-action-sheet"><div class="mdl"><div class="mh"></div><div id="as-title" class="as-title"></div><div id="as-items"></div></div></div>
 <div class="mo" id="modal-param-guidance">
   <div class="mdl" id="pgm-content"></div>
 </div>
@@ -1552,6 +1561,21 @@ function openModal(id){
   if(id==='modal-mesure')setTimeout(toggleMeasurePhotoField,0);
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+// Menu d'actions contextuel réutilisable (⋮). actions = [{icon,label,fn,danger}]
+let pendingActionSheetFns=[];
+function openActionSheet(title, actions){
+  pendingActionSheetFns=actions.map(a=>a.fn);
+  document.getElementById('as-title').textContent=title||'';
+  document.getElementById('as-items').innerHTML=actions.map((a,i)=>
+    `<button type="button" class="as-item${a.danger?' danger':''}" onclick="runActionSheet(${i})"><span class="as-icon">${a.icon||''}</span><span>${a.label}</span></button>`
+  ).join('');
+  openModal('modal-action-sheet');
+}
+function runActionSheet(i){
+  closeModal('modal-action-sheet');
+  const fn=pendingActionSheetFns[i];
+  if(fn) setTimeout(fn,180); // laisse le temps à la sheet de se refermer avant d'ouvrir un modal/confirm
+}
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{if(t.parentNode)document.body.removeChild(t)},2400)}
 
 // ═══════════════════════════════════════════
@@ -1615,7 +1639,7 @@ function renderAquarium(){
   document.getElementById('last-measures').innerHTML=allP.map(p=>{
     const m=l[p];const v=m?fv(p,m.value):null;
     const s=v!==null?gSt(p,v):'nd';
-    return`<div class="mr" onclick="openModal('modal-mesure');setTimeout(()=>document.getElementById('ap').value='${p}',50)">
+    return`<div class="mr" onclick="openDashboardParamActions('${p}')">
       <div><div class="mn">${PC[p].label}</div>${PC[p].kit?`<div class="mk">${PC[p].kit}</div>`:''}</div>
       <div style="text-align:right">
         <div class="mv ${s}">${v!==null?v+' '+PC[p].unit:'Non mesuré'}</div>
@@ -1641,6 +1665,16 @@ function togDC(key,label,d){
   saveSettings();
   if(wasUnchecked) logTaskHistory('daily',key,label); // ne loggue qu'à la coche, pas au décochage
   renderAquarium();
+}
+function openDashboardParamActions(p){
+  const l=getLatest();const m=l[p];
+  const actions=[{icon:'➕',label:'Nouveau relevé',fn:()=>{openModal('modal-mesure');setTimeout(()=>document.getElementById('ap').value=p,50)}}];
+  if(m){
+    actions.push({icon:'✏️',label:'Modifier le dernier relevé',fn:()=>editMeasure(m.id)});
+    actions.push({icon:'📊',label:"Voir l'historique",fn:()=>{nav('history');setTimeout(()=>{document.getElementById('hp').value=p;renderHistory()},50)}});
+    actions.push({icon:'🗑',label:'Supprimer le dernier relevé',danger:true,fn:()=>delMeasure(m.id)});
+  }
+  openActionSheet(PC[p].label, actions);
 }
 
 // Tâches du dimanche : visibles uniquement le dimanche (getDay()===0),
@@ -1760,20 +1794,26 @@ function renderHistory(){
         {label:'Cible',data:data.map(()=>cfg.target),borderColor:'rgba(0,201,177,.3)',borderWidth:1,borderDash:[6,3],pointRadius:0,fill:false}
       ]
     },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#3a6a8a',font:{size:11}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#3a6a8a',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'}}}}});
+    const chartList=document.getElementById('hch-list');
+    if(chartList){
+      const recent=[...data].reverse().slice(0,5);
+      chartList.innerHTML=recent.length?`<div style="font-size:11px;color:var(--t3);margin:12px 0 4px">Derniers relevés — touche pour modifier/supprimer</div>`+recent.map(m=>
+        `<div onclick="openMeasureActions('${m.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:.5px solid rgba(45,142,232,.06);cursor:pointer">
+          <span style="color:var(--t3);font-size:12px">${new Date(m.ts).toLocaleDateString('fr-FR')}</span>
+          <span style="font-weight:600">${fv(m.param,m.value)} ${cfg.unit}${m.photo?' 📷':''}</span>
+          <span style="color:var(--t3);font-size:18px">⋮</span>
+        </div>`).join(''):'';
+    }
   } else {
     const sl={ok:'OK',warn:'Vigilance',danger:'Hors plage'};
     const sc={ok:'var(--teal)',warn:'var(--amber)',danger:'var(--red)'};
     document.getElementById('htb').innerHTML=[...data].reverse().map(m=>{
       const s=gSt(m.param,m.value);
-      return`<tr style="border-bottom:.5px solid rgba(45,142,232,.06)">
+      return`<tr onclick="openMeasureActions('${m.id}')" style="border-bottom:.5px solid rgba(45,142,232,.06);cursor:pointer">
         <td style="padding:8px 6px;color:var(--t3)">${new Date(m.ts).toLocaleDateString('fr-FR')}</td>
-        <td style="padding:8px 6px;font-weight:600">${fv(m.param,m.value)} ${cfg.unit}</td>
+        <td style="padding:8px 6px;font-weight:600">${fv(m.param,m.value)} ${cfg.unit}${m.photo?' 📷':''}</td>
         <td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:20px;font-size:11px;background:${s==='ok'?'var(--td)':s==='warn'?'var(--ad)':'var(--rd)'};color:${sc[s]}">${sl[s]}</span></td>
-        <td style="padding:8px 4px">
-          ${m.photo?`<span onclick="viewMeasurePhoto('${m.id}')" style="cursor:pointer;font-size:12px;margin-right:8px">📷</span>`:''}
-          <span onclick="editMeasure('${m.id}')" style="cursor:pointer;color:var(--o3);font-size:12px;margin-right:8px">✏️</span>
-          <span onclick="delMeasure('${m.id}')" style="cursor:pointer;color:var(--red);font-size:12px">🗑</span>
-        </td>
+        <td style="padding:8px 4px;text-align:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;font-size:18px;color:var(--t3)">⋮</span></td>
       </tr>`;
     }).join('');
   }
@@ -1842,6 +1882,15 @@ async function delMeasure(id){
   const {error}=await sb.from('measures').delete().eq('id',id);
   if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
   measures=measures.filter(m=>m.id!=id);renderHistory();toast('Mesure supprimée');
+}
+function openMeasureActions(id){
+  const m=measures.find(x=>x.id==id);if(!m)return;
+  const cfg=PC[m.param];
+  const actions=[];
+  if(m.photo)actions.push({icon:'📷',label:'Voir la photo',fn:()=>viewMeasurePhoto(id)});
+  actions.push({icon:'✏️',label:'Modifier',fn:()=>editMeasure(id)});
+  actions.push({icon:'🗑',label:'Supprimer',danger:true,fn:()=>delMeasure(id)});
+  openActionSheet(`${cfg.label} · ${fv(m.param,m.value)} ${cfg.unit} · ${new Date(m.ts).toLocaleDateString('fr-FR')}`, actions);
 }
 
 // ═══════════════════════════════════════════
@@ -2339,7 +2388,7 @@ function renderJournal(){
   if(!filtered.length){el.innerHTML='<div class="emp"><div class="emp-i">📝</div><div class="emp-t">Aucune entrée trouvée.</div></div>';return}
   const dc={eau:'t',corail:'t',poisson:'',maintenance:'',algue:'a',alerte:'r',observation:'',autre:''};
   el.innerHTML=filtered.map(j=>`
-    <div class="je">
+    <div class="je" onclick="openJournalActions('${j.id}')" style="cursor:pointer">
       <div style="display:flex;gap:9px;align-items:flex-start">
         <div class="je-dot ${dc[j.cat]||''}"></div>
         <div style="flex:1">
@@ -2349,13 +2398,41 @@ function renderJournal(){
           ${j.photo?`<img src="${j.photo}" style="width:100%;border-radius:8px;margin-top:7px;max-height:160px;object-fit:cover">`:''}
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
             <span class="je-tg">${j.cat}</span>
-            <span onclick="delJournal('${j.id}')" style="color:var(--t4);font-size:12px;cursor:pointer">🗑 Supprimer</span>
+            <span style="color:var(--t3);font-size:18px">⋮</span>
           </div>
         </div>
       </div>
     </div>`).join('');
   // Charge les actus si on est sur le journal sans recherche active
   if(!q) loadNewsFeed();
+}
+function resetJournalForm(){
+  document.getElementById('jn-modal-title').textContent='Nouvelle entrée';
+  document.getElementById('jn-id').value='';
+  document.getElementById('jn-photo').value='';
+  document.getElementById('jn-cat').value='observation';
+  ['jn-title','jn-note'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('jn-photo-preview').innerHTML='';
+  pendingJnPhoto=null;
+}
+function openJournalActions(id){
+  const j=journal.find(x=>x.id==id);if(!j)return;
+  openActionSheet(j.title,[
+    {icon:'✏️',label:'Modifier',fn:()=>editJournal(id)},
+    {icon:'🗑',label:'Supprimer',danger:true,fn:()=>delJournal(id)}
+  ]);
+}
+function editJournal(id){
+  const j=journal.find(x=>x.id==id);if(!j)return;
+  document.getElementById('jn-modal-title').textContent="Modifier l'entrée";
+  document.getElementById('jn-id').value=id;
+  document.getElementById('jn-title').value=j.title;
+  document.getElementById('jn-cat').value=j.cat;
+  document.getElementById('jn-note').value=j.note;
+  document.getElementById('jn-photo').value=j.photo||'';
+  document.getElementById('jn-photo-preview').innerHTML=j.photo?`<img src="${j.photo}" style="width:100%;border-radius:8px;max-height:120px;object-fit:cover">`:'';
+  pendingJnPhoto=null;
+  openModal('modal-journal');
 }
 let pendingJnPhoto=null;
 function previewJournalPhoto(inp){
@@ -2367,22 +2444,34 @@ function previewJournalPhoto(inp){
 }
 async function saveJournal(){
   const title=document.getElementById('jn-title').value.trim();if(!title){toast('⚠️ Ajoute un titre');return}
-  let photoUrl='';
+  const id=document.getElementById('jn-id').value;
+  let photoUrl=document.getElementById('jn-photo').value||'';
   if(pendingJnPhoto){
     toast('📤 Envoi de la photo...');
     photoUrl=await uploadPhoto(pendingJnPhoto,'journal');
   }
-  const entryDate=new Date().toISOString().slice(0,10);
   const cat=document.getElementById('jn-cat').value;
   const note=document.getElementById('jn-note').value.trim();
-  const {data:inserted,error}=await sb.from('journal_entries').insert({owner_id:currentUser.id,entry_date:entryDate,title,category:cat,note,photo_url:photoUrl}).select().single();
-  if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
-  journal.push({id:inserted.id,date:entryDate,title,cat,note,photo:photoUrl});
+  if(id){
+    const {error}=await sb.from('journal_entries').update({title,category:cat,note,photo_url:photoUrl}).eq('id',id);
+    if(error){console.error(error);toast('⚠️ Échec de la modification');return}
+    const j=journal.find(x=>x.id==id);if(j)Object.assign(j,{title,cat,note,photo:photoUrl});
+    toast('✓ Entrée modifiée');
+  }else{
+    const entryDate=new Date().toISOString().slice(0,10);
+    const {data:inserted,error}=await sb.from('journal_entries').insert({owner_id:currentUser.id,entry_date:entryDate,title,category:cat,note,photo_url:photoUrl}).select().single();
+    if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+    journal.push({id:inserted.id,date:entryDate,title,cat,note,photo:photoUrl});
+    toast('✓ Entrée enregistrée');
+  }
   pendingJnPhoto=null;
   closeModal('modal-journal');
+  document.getElementById('jn-modal-title').textContent='Nouvelle entrée';
+  document.getElementById('jn-id').value='';
+  document.getElementById('jn-photo').value='';
   ['jn-title','jn-note'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('jn-photo-preview').innerHTML='';
-  renderJournal();toast('✓ Entrée enregistrée');
+  renderJournal();
 }
 async function delJournal(id){
   if(!confirm('Supprimer cette entrée ?'))return;
@@ -2797,7 +2886,7 @@ function renderEquipment(){
       const daysLeft=Math.floor((exp-now)/86400000);
       warranty=daysLeft>0?`<div class="mk">Garantie : ${daysLeft}j restants</div>`:`<div class="mk" style="color:var(--red)">Garantie expirée</div>`;
     }
-    return`<div class="er">
+    return`<div class="er" onclick="openEquipActions('${e.id}')" style="cursor:pointer">
       <div class="ei">${e.emoji||'⚙️'}</div>
       <div style="flex:1">
         <div class="en">${e.name}</div>
@@ -2807,13 +2896,17 @@ function renderEquipment(){
       </div>
       <div style="text-align:right">
         <div class="ep">${e.price>0?e.price+'€':'Offert'}</div>
-        <div style="display:flex;gap:6px;margin-top:4px">
-          <span onclick="editEquip('${e.id}')" style="cursor:pointer;color:var(--o3);font-size:12px">✏️</span>
-          <span onclick="if(confirm('Supprimer ?')){delEquip('${e.id}')}" style="cursor:pointer;color:var(--red);font-size:12px">🗑</span>
-        </div>
+        <div style="color:var(--t3);font-size:18px;margin-top:4px">⋮</div>
       </div>
     </div>`;
   }).join('');
+}
+function openEquipActions(id){
+  const e=equipment.find(x=>x.id==id);if(!e)return;
+  openActionSheet(e.name,[
+    {icon:'✏️',label:'Modifier',fn:()=>editEquip(id)},
+    {icon:'🗑',label:'Supprimer',danger:true,fn:()=>{if(confirm('Supprimer ?'))delEquip(id)}}
+  ]);
 }
 function editEquip(id){
   const e=equipment.find(x=>x.id===id);if(!e)return;
@@ -2894,9 +2987,14 @@ async function delPhoto(id){
 }
 function viewPhoto(i){
   const sorted=[...gallery].sort((a,b)=>b.ts-a.ts);
-  const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer';
+  const photoId=sorted[i].id;
+  const overlayId='photo-viewer-'+Date.now();
+  const o=document.createElement('div');o.id=overlayId;o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer';
   const d=new Date(sorted[i].ts).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
-  o.innerHTML=`<img src="${sorted[i].src}" style="max-width:100%;max-height:85vh;object-fit:contain"><div style="color:var(--t3);font-size:12px;margin-top:10px">${d}</div><div style="position:absolute;top:20px;right:20px;color:rgba(255,255,255,.6);font-size:28px">×</div>`;
+  o.innerHTML=`<img src="${sorted[i].src}" style="max-width:100%;max-height:85vh;object-fit:contain">
+    <div style="color:var(--t3);font-size:12px;margin-top:10px">${d}</div>
+    <div style="position:absolute;top:20px;right:20px;color:rgba(255,255,255,.6);font-size:28px">×</div>
+    <button type="button" onclick="event.stopPropagation();document.getElementById('${overlayId}').remove();delPhoto('${photoId}')" style="position:absolute;bottom:24px;background:rgba(220,50,50,.85);color:#fff;border:none;border-radius:24px;padding:12px 22px;font-size:14px;font-weight:600;cursor:pointer">🗑 Supprimer</button>`;
   o.onclick=()=>document.body.removeChild(o);document.body.appendChild(o);
 }
 
