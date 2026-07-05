@@ -438,7 +438,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     <div class="sm-hd" onclick="nav('aquarium')" style="cursor:pointer">
       <div class="sm-title">🐠 ReefKeeper Tristan</div>
       <div class="sm-sub">Reefer 300 XL G3 · Depuis le 8 juin 2026</div>
-      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v4.4</div>
+      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v4.5</div>
     </div>
     <div class="sm-body">
       <div class="sm-sec">Outils</div>
@@ -519,7 +519,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     </div>
     <div class="dnav-footer">
       <strong>Connecté :</strong> <span id="dnav-user-email">—</span><br>
-      <strong>Vol :</strong> 300 L · <span style="cursor:pointer;color:var(--o4)" onclick="fetchWeather()" id="dnav-weather">—°C · Nemours</span>
+      <strong>Vol :</strong> 300 L
     </div>
   </div>
 
@@ -693,7 +693,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         </label>
         <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
       </div>
-      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.4<br><span id="pwa-diag" style="font-size:9px"></span></div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.5<br><span id="pwa-diag" style="font-size:9px"></span></div>
     </div>
 
   </div><!-- /cnt -->
@@ -1206,7 +1206,10 @@ window.pwaDiag='';
       if(window.matchMedia('(display-mode: '+m+')').matches){dm=m;break;}
     }
   }catch(e){}
-  const isApp = navigator.standalone===true || dm!=='browser' || location.search.indexOf('pwa=1')>-1 || location.hash.indexOf('pwa')>-1;
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  const uaApp=isIOS && !/Safari/.test(navigator.userAgent);           // app installée : UA sans "Safari"
+  const fullH=isIOS && Math.abs(window.innerHeight-screen.height)<3;  // fenêtre = écran → plein écran
+  const isApp = navigator.standalone===true || dm!=='browser' || location.search.indexOf('pwa=1')>-1 || location.hash.indexOf('pwa')>-1 || uaApp || fullH;
   // Mesure de ce que l'appareil rapporte réellement pour env()
   const probe=document.createElement('div');
   probe.style.cssText='position:fixed;top:0;left:0;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
@@ -1214,7 +1217,7 @@ window.pwaDiag='';
   const cs=getComputedStyle(probe);
   const envTop=parseFloat(cs.paddingTop)||0, envBot=parseFloat(cs.paddingBottom)||0;
   probe.remove();
-  window.pwaDiag='mode:'+dm+' · ns:'+String(navigator.standalone)+' · envT:'+envTop+' · envB:'+envBot+' · ih:'+window.innerHeight+'/'+screen.height;
+  window.pwaDiag='mode:'+dm+' · ns:'+String(navigator.standalone)+' · ua:'+(uaApp?1:0)+' · fh:'+(fullH?1:0)+' · envT:'+envTop+' · envB:'+envBot+' · ih:'+window.innerHeight+'/'+screen.height;
   if(isApp){
     document.documentElement.classList.add('ios-pwa');
     document.documentElement.style.setProperty('--st', Math.max(envTop,62)+'px');
@@ -1225,7 +1228,7 @@ window.pwaDiag='';
     window.addEventListener('orientationchange', ()=>setTimeout(setVh,120));
   }
 })();
-window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v4.4 · '+window.pwaDiag;}});
+window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v4.5 · '+window.pwaDiag;}});
 // Service worker : rend l'app installable (PWA) et disponible hors ligne en lecture.
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
