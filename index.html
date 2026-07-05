@@ -438,6 +438,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     <div class="sm-hd" onclick="nav('aquarium')" style="cursor:pointer">
       <div class="sm-title">🐠 ReefKeeper Tristan</div>
       <div class="sm-sub">Reefer 300 XL G3 · Depuis le 8 juin 2026</div>
+      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v4.4</div>
     </div>
     <div class="sm-body">
       <div class="sm-sec">Outils</div>
@@ -692,7 +693,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         </label>
         <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
       </div>
-      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.3<br><span id="pwa-diag" style="font-size:9px"></span></div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.4<br><span id="pwa-diag" style="font-size:9px"></span></div>
     </div>
 
   </div><!-- /cnt -->
@@ -1205,7 +1206,7 @@ window.pwaDiag='';
       if(window.matchMedia('(display-mode: '+m+')').matches){dm=m;break;}
     }
   }catch(e){}
-  const isApp = navigator.standalone===true || dm!=='browser' || location.search.indexOf('pwa=1')>-1;
+  const isApp = navigator.standalone===true || dm!=='browser' || location.search.indexOf('pwa=1')>-1 || location.hash.indexOf('pwa')>-1;
   // Mesure de ce que l'appareil rapporte réellement pour env()
   const probe=document.createElement('div');
   probe.style.cssText='position:fixed;top:0;left:0;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
@@ -1224,7 +1225,7 @@ window.pwaDiag='';
     window.addEventListener('orientationchange', ()=>setTimeout(setVh,120));
   }
 })();
-window.addEventListener('DOMContentLoaded',()=>{const d=document.getElementById('pwa-diag');if(d)d.textContent=window.pwaDiag;});
+window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v4.4 · '+window.pwaDiag;}});
 // Service worker : rend l'app installable (PWA) et disponible hors ligne en lecture.
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
