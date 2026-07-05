@@ -10,9 +10,6 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <meta name="theme-color" content="#03080f">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <title>ReefKeeper Tristan</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -456,7 +453,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 
   <!-- DESKTOP SIDEBAR NAV -->
   <div id="desktop-nav" style="display:none">
-    <div class="dnav-logo">
+    <div class="dnav-logo" onclick="nav('aquarium')" style="cursor:pointer">
       <div class="dnav-logo-title">🐠 ReefKeeper</div>
       <div class="dnav-logo-sub">Reefer 300 XL G3<br>Depuis le 8 juin 2026</div>
     </div>
@@ -1203,11 +1200,6 @@ window.addEventListener('unhandledrejection', ev=>{
 window.addEventListener('offline', ()=>showSyncStatus('📡 Hors ligne — les modifications ne seront pas enregistrées', true));
 window.addEventListener('online', ()=>showSyncStatus('✓ Connexion rétablie', false));
 // PWA : service worker (installable, page en cache si hors ligne)
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('/sw.js').catch(err=>console.warn('SW non enregistré:', err));
-  });
-}
 // Anti double-tap : verrouille une fonction async le temps de son exécution.
 // Usage dans le HTML : onclick="guarded('saveAnimal')"
 const _fnLocks={};
