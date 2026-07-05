@@ -3013,7 +3013,7 @@ function openEquipActions(id){
   const e=equipment.find(x=>x.id==id);if(!e)return;
   openActionSheet(e.name,[
     {icon:'✏️',label:'Modifier',fn:()=>editEquip(id)},
-    {icon:'🗑',label:'Supprimer',danger:true,fn:async()=>{if(await confirmSheet('Supprimer «'+e.name+'» ?'))delEquip(id)}}
+    {icon:'🗑',label:'Supprimer',danger:true,fn:async()=>{if(await confirmSheet('Supprimer «'+escHtml(e.name)+'» ?'))delEquip(id)}}
   ]);
 }
 function editEquip(id){
