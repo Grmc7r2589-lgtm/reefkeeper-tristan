@@ -692,7 +692,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         </label>
         <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
       </div>
-      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.2<br><span id="pwa-diag" style="font-size:9px"></span></div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.3<br><span id="pwa-diag" style="font-size:9px"></span></div>
     </div>
 
   </div><!-- /cnt -->
@@ -1205,7 +1205,7 @@ window.pwaDiag='';
       if(window.matchMedia('(display-mode: '+m+')').matches){dm=m;break;}
     }
   }catch(e){}
-  const isApp = navigator.standalone===true || dm!=='browser';
+  const isApp = navigator.standalone===true || dm!=='browser' || location.search.indexOf('pwa=1')>-1;
   // Mesure de ce que l'appareil rapporte réellement pour env()
   const probe=document.createElement('div');
   probe.style.cssText='position:fixed;top:0;left:0;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
