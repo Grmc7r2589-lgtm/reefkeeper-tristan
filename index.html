@@ -41,7 +41,8 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
    Corrige le bug iOS où la web app plein écran "glisse" vers le haut de la
    hauteur de la barre de statut au lancement, décalant tout l'affichage. */
 @media(max-width:767px){
-  #app{position:fixed;inset:0;height:auto;max-width:none;margin:0;background:#000}
+  body{background:#000}
+  #app{position:fixed;inset:0;height:auto;max-width:none;margin:0;background:#000;border-radius:0 0 44px 44px;overflow:hidden}
 }
 @media(min-width:768px){#app{max-width:760px;box-shadow:0 0 100px rgba(0,0,0,.8)}body{background:#01040a;display:flex;flex-direction:row;align-items:center;justify-content:center;width:100vw;height:100vh}}
 
@@ -122,6 +123,10 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 .tdate{font-size:10px;color:var(--t4)}
 /* HEADER */
 .hdr{background:rgba(7,21,37,.96);padding:calc(var(--st)+10px) 14px 11px;display:flex;align-items:center;gap:11px;flex-shrink:0;border-bottom:.5px solid rgba(45,142,232,.1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:relative;z-index:10}
+/* Fondu entre la barre de statut noire (iOS) et la couleur de l'en-tête :
+   sans ça la transition est une ligne nette. La hauteur suit --st si
+   l'appareil la mesure, sinon 24px par défaut pour toujours avoir un fondu visible. */
+.hdr::before{content:'';position:absolute;top:0;left:0;right:0;height:max(var(--st),24px);background:linear-gradient(to bottom,#000,rgba(7,21,37,.96));pointer-events:none}
 .hbg{width:36px;height:36px;border-radius:9px;background:rgba(45,142,232,.1);border:.5px solid rgba(45,142,232,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .hbg:active{background:rgba(45,142,232,.22)}
 .bln{display:flex;flex-direction:column;gap:4px}
@@ -133,7 +138,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 .hw-t{font-size:15px;font-weight:700;color:var(--t1);line-height:1}
 .hw-c{font-size:10px;color:var(--t3)}
 /* BOTTOM TAB BAR */
-.tbr{background:rgba(7,21,37,.97);border-top:.5px solid rgba(45,142,232,.1);display:flex;padding:6px 18px calc(var(--sb)+6px);flex-shrink:0;border-radius:0 0 40px 40px}
+.tbr{background:rgba(7,21,37,.97);border-top:.5px solid rgba(45,142,232,.1);display:flex;padding:6px 18px calc(var(--sb)+6px);flex-shrink:0}
 .tbi{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;transition:all .15s}
 .tbi svg{width:22px;height:22px;stroke:var(--t3);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
 .tbi span{font-size:10px;color:var(--t3);transition:color .15s}
