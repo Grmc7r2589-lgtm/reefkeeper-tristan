@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="ReefKeeper">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -26,18 +26,8 @@
 --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
 --mw:285px;--tbh:58px;
 }
-/* Mode app installée (PWA) : si l'iPhone ne fournit pas les zones sûres,
-   on garantit un minimum pour que l'heure ne recouvre jamais le header
-   et que la barre d'onglets épouse l'arrondi du bas. */
-@media (display-mode: standalone){
-  :root{
-    --st:max(env(safe-area-inset-top,0px),54px);
-    --sb:max(env(safe-area-inset-bottom,0px),24px);
-  }
-}
-/* Plan C : classe posée en JS via navigator.standalone (iOS), indépendante
-   de env() et des media queries qui échouent sur certains appareils. */
-html.ios-pwa{--st:62px;--sb:30px;}
+/* Téléphone : plancher de 20px sous la barre d'onglets (barre home iOS). */
+@media(max-width:767px){:root{--sb:max(env(safe-area-inset-bottom,0px),20px)}}
 html.ios-pwa #app{height:var(--vh,100dvh);}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:var(--t1);overflow:hidden}
@@ -444,7 +434,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     <div class="sm-hd" onclick="nav('aquarium')" style="cursor:pointer">
       <div class="sm-title">🐠 ReefKeeper Tristan</div>
       <div class="sm-sub">Reefer 300 XL G3 · Depuis le 8 juin 2026</div>
-      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v4.6</div>
+      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v4.7</div>
     </div>
     <div class="sm-body">
       <div class="sm-sec">Outils</div>
@@ -699,7 +689,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         </label>
         <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
       </div>
-      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.6<br><span id="pwa-diag" style="font-size:9px"></span></div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.7<br><span id="pwa-diag" style="font-size:9px"></span></div>
     </div>
 
   </div><!-- /cnt -->
@@ -1190,10 +1180,10 @@ function showSyncStatus(msg, isError){
   if(!el){
     el=document.createElement('div');
     el.id='sync-banner';
-    el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;text-align:center;font-size:12px;padding:7px;font-weight:500;transition:opacity .3s';
+    el.style.cssText='position:fixed;top:calc(var(--st,0px) + 8px);left:50%;transform:translateX(-50%);max-width:92%;z-index:9999;text-align:center;font-size:12px;padding:8px 16px;font-weight:500;border-radius:20px;transition:opacity .3s;box-shadow:0 4px 18px rgba(0,0,0,.4)';
     document.body.appendChild(el);
   }
-  el.style.background=isError?'#ff4d4d':'#00c9b1';
+  el.style.background=isError?'rgba(200,45,45,.95)':'rgba(13,34,69,.96)';el.style.border='.5px solid rgba(45,142,232,.3)';
   el.style.color='#fff';
   el.textContent=msg;
   el.style.opacity='1';
@@ -1226,8 +1216,6 @@ window.pwaDiag='';
   window.pwaDiag='mode:'+dm+' · ns:'+String(navigator.standalone)+' · ua:'+(uaApp?1:0)+' · fh:'+(fullH?1:0)+' · envT:'+envTop+' · envB:'+envBot+' · ih:'+window.innerHeight+'/'+screen.height;
   if(isApp){
     document.documentElement.classList.add('ios-pwa');
-    document.documentElement.style.setProperty('--st', Math.max(envTop,62)+'px');
-    document.documentElement.style.setProperty('--sb', Math.max(envBot,28)+'px');
     const setVh=()=>document.documentElement.style.setProperty('--vh', window.innerHeight+'px');
     setVh();
     window.addEventListener('resize', setVh);
@@ -1240,7 +1228,7 @@ window.pwaDiag='';
     window.addEventListener('pageshow', pin);
   }
 })();
-window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v4.6 · '+window.pwaDiag;}});
+window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v4.7 · '+window.pwaDiag;}});
 // Service worker : rend l'app installable (PWA) et disponible hors ligne en lecture.
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
