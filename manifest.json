@@ -2,7 +2,7 @@
   "name": "ReefKeeper",
   "short_name": "ReefKeeper",
   "description": "Suivi de mon aquarium récifal — Red Sea Reefer 300 XL",
-  "start_url": "/",
+  "start_url": "/?pwa=1",
   "display": "standalone",
   "background_color": "#03080f",
   "theme_color": "#03080f",
