@@ -35,6 +35,10 @@
     --sb:max(env(safe-area-inset-bottom,0px),24px);
   }
 }
+/* Plan C : classe posée en JS via navigator.standalone (iOS), indépendante
+   de env() et des media queries qui échouent sur certains appareils. */
+html.ios-pwa{--st:62px;--sb:30px;}
+html.ios-pwa #app{height:var(--vh,100dvh);}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:var(--t1);overflow:hidden}
 /* BUBBLES */
@@ -688,7 +692,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         </label>
         <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
       </div>
-      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.0</div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.1 — correctif PWA</div>
     </div>
 
   </div><!-- /cnt -->
@@ -1191,6 +1195,15 @@ function showSyncStatus(msg, isError){
 
 // ── AUTHENTIFICATION ──
 // ── FIABILITÉ ──
+// PWA iOS : navigator.standalone est le seul signal fiable sur certains iPhone.
+// On force les espacements haut/bas et on cale la hauteur sur la fenêtre réelle.
+if(navigator.standalone===true){
+  document.documentElement.classList.add('ios-pwa');
+  const setVh=()=>document.documentElement.style.setProperty('--vh', window.innerHeight+'px');
+  setVh();
+  window.addEventListener('resize', setVh);
+  window.addEventListener('orientationchange', ()=>setTimeout(setVh,120));
+}
 // Service worker : rend l'app installable (PWA) et disponible hors ligne en lecture.
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
