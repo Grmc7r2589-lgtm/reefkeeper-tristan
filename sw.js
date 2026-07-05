@@ -2,7 +2,7 @@
 // Stratégie : network-first pour la page principale (on ne sert jamais une
 // vieille version quand le réseau marche), avec repli sur le cache si hors
 // ligne. Les photos Supabase ne sont pas mises en cache ici (trop lourdes).
-const CACHE = 'reefkeeper-v3';
+const CACHE = 'reefkeeper-v4';
 const SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
