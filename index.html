@@ -6,7 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ReefKeeper">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <meta name="theme-color" content="#03080f">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <title>ReefKeeper Tristan</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1179,6 +1185,12 @@ function showSyncStatus(msg, isError){
 
 // ── AUTHENTIFICATION ──
 // ── FIABILITÉ ──
+// Service worker : rend l'app installable (PWA) et disponible hors ligne en lecture.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(err=>console.warn('SW non enregistré:', err));
+  });
+}
 // Filet global : toute promesse rejetée non gérée (ex: réseau coupé pendant
 // un appel Supabase) affiche un message au lieu d'échouer en silence.
 window.addEventListener('unhandledrejection', ev=>{
@@ -1190,6 +1202,12 @@ window.addEventListener('unhandledrejection', ev=>{
 // Détection de connexion : bannière quand on passe hors ligne / en ligne.
 window.addEventListener('offline', ()=>showSyncStatus('📡 Hors ligne — les modifications ne seront pas enregistrées', true));
 window.addEventListener('online', ()=>showSyncStatus('✓ Connexion rétablie', false));
+// PWA : service worker (installable, page en cache si hors ligne)
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(err=>console.warn('SW non enregistré:', err));
+  });
+}
 // Anti double-tap : verrouille une fonction async le temps de son exécution.
 // Usage dans le HTML : onclick="guarded('saveAnimal')"
 const _fnLocks={};
@@ -1227,7 +1245,7 @@ async function doLogin(){
 }
 
 async function doLogout(){
-  if(!confirm('Te déconnecter ?'))return;
+  if(!await confirmSheet('Te déconnecter ?','Se déconnecter'))return;
   await sb.auth.signOut();
   currentUser=null;
   location.reload();
@@ -1322,7 +1340,7 @@ async function addLinkedPhoto(inp, linkedType, linkedId){
   toast('✓ Photo ajoutée');
 }
 async function delLinkedPhoto(photoId, linkedType, linkedId){
-  if(!confirm('Supprimer cette photo ?'))return;
+  if(!await confirmSheet('Supprimer cette photo ?'))return;
   const {error}=await sb.from('gallery_photos').delete().eq('id',photoId);
   if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
   renderLinkedGallery(linkedType, linkedId);
@@ -1596,6 +1614,34 @@ function runActionSheet(i){
   closeModal('modal-action-sheet');
   const fn=pendingActionSheetFns[i];
   if(fn) setTimeout(fn,180); // laisse le temps à la sheet de se refermer avant d'ouvrir un modal/confirm
+}
+// Confirmation stylée (remplace confirm() natif). Usage : if(!await confirmSheet('...'))return;
+let _confirmResolve=null;
+function confirmSheet(message, confirmLabel){
+  return new Promise(resolve=>{
+    _confirmResolve=resolve;
+    document.getElementById('as-title').textContent='';
+    document.getElementById('as-items').innerHTML=
+      `<div style="font-size:15px;font-weight:600;text-align:center;line-height:1.5;padding:4px 8px 16px">${message}</div>
+       <button type="button" class="btn btn-r" style="width:100%;margin-bottom:8px" onclick="resolveConfirm(true)">${confirmLabel||'🗑 Supprimer'}</button>
+       <button type="button" class="btn btn-g" style="width:100%" onclick="resolveConfirm(false)">Annuler</button>`;
+    openModal('modal-action-sheet');
+    // Fermer en tapant à côté = annuler (sinon la promesse resterait en attente)
+    const mo=document.getElementById('modal-action-sheet');
+    mo.onclick=ev=>{if(ev.target===mo)resolveConfirm(false)};
+  });
+}
+function resolveConfirm(v){
+  closeModal('modal-action-sheet');
+  if(_confirmResolve){const r=_confirmResolve;_confirmResolve=null;r(v);}
+}
+async function confirmDelAnimal(id){
+  const a=animals.find(x=>x.id==id);
+  if(await confirmSheet('Supprimer «'+escHtml(a?a.name:'')+'» ?')){delAnimal(id);closeModal('modal-creature');}
+}
+async function confirmDelCoral(id){
+  const c=corals.find(x=>x.id==id);
+  if(await confirmSheet('Supprimer «'+escHtml(c?c.name:'')+'» ?')){delCoral(id);closeModal('modal-creature');}
 }
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>{if(t.parentNode)document.body.removeChild(t)},2400)}
 
@@ -1899,7 +1945,7 @@ function viewMeasurePhoto(id){
   o.onclick=()=>document.body.removeChild(o);document.body.appendChild(o);
 }
 async function delMeasure(id){
-  if(!confirm('Supprimer cette mesure ?'))return;
+  if(!await confirmSheet('Supprimer cette mesure ?'))return;
   const {error}=await sb.from('measures').delete().eq('id',id);
   if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
   measures=measures.filter(m=>m.id!=id);renderHistory();toast('Mesure supprimée');
@@ -1936,8 +1982,8 @@ function renderPop(){
     <div class="cc" onclick="openCreature('${a.id}')">
       <div class="ca ${a.status==='tank'?'it':a.status==='dead'?'pl':'pl'}">${imgSrc?`<img src="${imgSrc}">`:(a.emoji||'🐟')}</div>
       <div class="ci">
-        <div class="cn">${a.name}</div>
-        <div class="cs">${a.sci}</div>
+        <div class="cn">${escHtml(a.name)}</div>
+        <div class="cs">${escHtml(a.sci)}</div>
         ${a.date?`<div class="cm">Introduit le ${new Date(a.date+'T00:00:00').toLocaleDateString('fr-FR')}</div>`:''}
         <span class="cbadge ${a.status==='tank'?'b-it':a.status==='dead'?'b-de':'b-pl'}">${a.status==='tank'?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
       </div>
@@ -1975,7 +2021,7 @@ function openCreature(id){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       ${!imgSrc?`<div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,var(--bg2),var(--bg3));display:flex;align-items:center;justify-content:center;font-size:28px;border:.5px solid rgba(0,201,177,.3);overflow:hidden;flex-shrink:0">${a.emoji||'🐟'}</div>`:''}
       <div>
-        <div style="font-size:18px;font-weight:700">${a.name}</div>
+        <div style="font-size:18px;font-weight:700">${escHtml(a.name)}</div>
         <div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:2px">${a.sci}</div>
         <span class="cbadge ${inTank?'b-it':a.status==='dead'?'b-de':'b-pl'}" style="margin-top:4px">${inTank?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
         ${(()=>{const sp=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv].find(s=>s.sci===a.sci);return sp?`<div style="margin-top:6px">${priceLabelHTML(sp.price??null)}</div>`:''})()}
@@ -1984,7 +2030,7 @@ function openCreature(id){
     <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
       ${statusBtns}
       <button class="btn btn-g btn-sm" onclick="editAnimal('${id}')">✏️ Modifier</button>
-      <button class="btn btn-r btn-sm" onclick="if(confirm('Supprimer ?')){delAnimal('${id}');closeModal('modal-creature')}">🗑 Supprimer</button>
+      <button class="btn btn-r btn-sm" onclick="confirmDelAnimal('${id}')">🗑 Supprimer</button>
     </div>
     ${inTank?`
     <div class="ulk"><span style="font-size:20px">🔓</span><div class="ulk-t"><strong>Fiches débloquées !</strong> Animal présent dans ton bac.</div></div>
@@ -1996,7 +2042,7 @@ function openCreature(id){
     <div class="al a-warn"><span class="ai">🔒</span><div>Ajoute cet animal au bac pour débloquer sa fiche complète.</div></div>
     <div class="tip" style="opacity:.4"><div class="tip-h">💡 Aperçu</div><div class="tip-li">${tips.care[0]}</div><div class="tip-li" style="color:var(--t4)">… fiche complète après introduction</div></div>
     `}
-    ${a.notes?`<div class="gls" style="margin-top:10px"><div style="font-size:11px;color:var(--t3);margin-bottom:3px">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5">${a.notes}</div></div>`:''}
+    ${a.notes?`<div class="gls" style="margin-top:10px"><div style="font-size:11px;color:var(--t3);margin-bottom:3px">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5">${escHtml(a.notes)}</div></div>`:''}
     <div class="sh" style="margin:14px 0 8px"><span class="shl">Galerie photos</span><label style="font-size:13px;color:var(--o3);cursor:pointer">+ Ajouter<input type="file" accept="image/*" style="display:none" onchange="addLinkedPhoto(this,'animal','${id}')"></label></div>
     <div class="gg" id="linked-gallery" style="margin-bottom:10px"></div>
     <button class="btn btn-g" style="width:100%;margin-top:12px" onclick="closeModal('modal-creature')">Fermer</button>`;
@@ -2091,7 +2137,7 @@ function openCoral(id){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       ${!imgSrc?`<div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,#081e3a,#102a55);display:flex;align-items:center;justify-content:center;font-size:28px;border:.5px solid rgba(0,201,177,.3);overflow:hidden;flex-shrink:0">${c.emoji||'🪸'}</div>`:''}
       <div>
-        <div style="font-size:18px;font-weight:700">${c.name}</div>
+        <div style="font-size:18px;font-weight:700">${escHtml(c.name)}</div>
         <div style="font-size:12px;color:var(--teal);font-weight:600;margin-top:2px">${tl[c.type]||c.type}</div>
         <span class="cbadge ${inTank?'b-it':'b-pl'}" style="margin-top:4px">${inTank?'✅ Dans le bac':'⏳ Prévu'}</span>
         ${(()=>{const all=[...SPECIES_DB.coral,...SPECIES_DB.inv,...SPECIES_DB.fish];const sp=all.find(s=>matchCoralName(s.name,c.name));return sp?`<div style="margin-top:6px">${priceLabelHTML(sp.price??null)}</div>`:''})()}
@@ -2102,7 +2148,7 @@ function openCoral(id){
         ?`<button class="btn btn-g btn-sm" onclick="moveCoral('${id}','planned');closeModal('modal-creature')">← Retirer</button>`
         :`<button class="btn btn-o btn-sm" onclick="moveCoral('${id}','tank');closeModal('modal-creature')">✅ Ajouter au bac</button>`}
       <button class="btn btn-g btn-sm" onclick="editCoral('${id}')">✏️ Modifier</button>
-      <button class="btn btn-r btn-sm" onclick="if(confirm('Supprimer ?')){delCoral('${id}');closeModal('modal-creature')}">🗑</button>
+      <button class="btn btn-r btn-sm" onclick="confirmDelCoral('${id}')">🗑</button>
     </div>
     ${inTank?`
     <div class="ulk"><span style="font-size:20px">🔓</span><div class="ulk-t"><strong>Fiche débloquée !</strong> Corail dans ton bac.</div></div>
@@ -2115,7 +2161,7 @@ function openCoral(id){
     <div class="tip" style="opacity:.4"><div class="tip-h">💡 Aperçu</div><div class="tip-li">${tips.care[0]}</div><div class="tip-li" style="color:var(--t4)">… fiche complète après introduction</div></div>
     `}
     ${c.location?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">📍 Emplacement</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${c.location}</div></div>`:''}
-    ${c.notes?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5;margin-top:2px">${c.notes}</div></div>`:''}
+    ${c.notes?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5;margin-top:2px">${escHtml(c.notes)}</div></div>`:''}
     <div class="sh" style="margin:14px 0 8px"><span class="shl">Suivi de croissance</span><label style="font-size:13px;color:var(--o3);cursor:pointer">+ Ajouter<input type="file" accept="image/*" style="display:none" onchange="addLinkedPhoto(this,'coral','${id}')"></label></div>
     <div class="gg" id="linked-gallery" style="margin-bottom:10px"></div>
     <button class="btn btn-g" style="width:100%;margin-top:12px" onclick="closeModal('modal-creature')">Fermer</button>`;
@@ -2193,7 +2239,7 @@ function renderCoraux(){
     if(!imgSrc && c.name){
       imgSrc=findCatalogPhoto(c.name);
     }
-    return `<div class="cc" onclick="openCoral('${c.id}')"><div class="ca ${c.status==='tank'?'it':'pl'}">${imgSrc?`<img src="${imgSrc}">`:(c.emoji||'🪸')}</div><div class="ci"><div class="cn">${c.name}</div><div class="cs">${tl[c.type]||c.type}${c.location?' · '+c.location:''}</div><span class="cbadge ${c.status==='tank'?'b-it':'b-pl'}">${c.status==='tank'?'✅ Dans le bac':'⏳ Prévu'}</span></div><div class="cc-ch">›</div></div>`;
+    return `<div class="cc" onclick="openCoral('${c.id}')"><div class="ca ${c.status==='tank'?'it':'pl'}">${imgSrc?`<img src="${imgSrc}">`:(c.emoji||'🪸')}</div><div class="ci"><div class="cn">${escHtml(c.name)}</div><div class="cs">${tl[c.type]||c.type}${c.location?' · '+escHtml(c.location):''}</div><span class="cbadge ${c.status==='tank'?'b-it':'b-pl'}">${c.status==='tank'?'✅ Dans le bac':'⏳ Prévu'}</span></div><div class="cc-ch">›</div></div>`;
   }).join(''):
     '<div class="emp" style="padding:14px 0"><div class="emp-t">Aucun corail.</div></div>';
   el.innerHTML=cH([...tank,...plan]);
@@ -2414,8 +2460,8 @@ function renderJournal(){
         <div class="je-dot ${dc[j.cat]||''}"></div>
         <div style="flex:1">
           <div class="je-dt">${fdateS(j.date+'T00:00:00')}</div>
-          <div class="je-ti">${j.title}</div>
-          <div class="je-nt">${j.note}</div>
+          <div class="je-ti">${escHtml(j.title)}</div>
+          <div class="je-nt">${escHtml(j.note)}</div>
           ${j.photo?`<img src="${j.photo}" style="width:100%;border-radius:8px;margin-top:7px;max-height:160px;object-fit:cover">`:''}
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
             <span class="je-tg">${j.cat}</span>
@@ -2495,7 +2541,7 @@ async function saveJournal(){
   renderJournal();
 }
 async function delJournal(id){
-  if(!confirm('Supprimer cette entrée ?'))return;
+  if(!await confirmSheet('Supprimer cette entrée ?'))return;
   const {error}=await sb.from('journal_entries').delete().eq('id',id);
   if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
   journal=journal.filter(j=>j.id!==id);renderJournal();toast('Entrée supprimée');
@@ -2545,6 +2591,8 @@ function findCatalogPhoto(coralName){
 // ── Utilitaires globaux (définis tôt pour être disponibles partout) ─────────
 const DISC_CATS=[{key:'fish',label:'🐟 Poissons'},{key:'coral',label:'🪸 Coraux'},{key:'inv',label:'🦐 Invertébrés'}];
 function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+// Échappe le texte utilisateur inséré via innerHTML (titres, notes, noms…)
+function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function priceIndicator(price){
   if(price===null||price===undefined)return null;
   let symbol;
@@ -2910,8 +2958,8 @@ function renderEquipment(){
     return`<div class="er" onclick="openEquipActions('${e.id}')" style="cursor:pointer">
       <div class="ei">${e.emoji||'⚙️'}</div>
       <div style="flex:1">
-        <div class="en">${e.name}</div>
-        <div class="ed">${e.detail||''}</div>
+        <div class="en">${escHtml(e.name)}</div>
+        <div class="ed">${escHtml(e.detail||'')}</div>
         ${e.date?`<div class="mk">Acheté le ${new Date(e.date+'T00:00:00').toLocaleDateString('fr-FR')}</div>`:''}
         ${warranty}
       </div>
@@ -2926,7 +2974,7 @@ function openEquipActions(id){
   const e=equipment.find(x=>x.id==id);if(!e)return;
   openActionSheet(e.name,[
     {icon:'✏️',label:'Modifier',fn:()=>editEquip(id)},
-    {icon:'🗑',label:'Supprimer',danger:true,fn:()=>{if(confirm('Supprimer ?'))delEquip(id)}}
+    {icon:'🗑',label:'Supprimer',danger:true,fn:async()=>{if(await confirmSheet('Supprimer «'+e.name+'» ?'))delEquip(id)}}
   ]);
 }
 function editEquip(id){
@@ -3001,7 +3049,7 @@ async function addPhotos(input){
   toast(n>0?`📸 ${n} photo(s) ajoutée(s)`:'⚠️ Échec de l\'envoi');
 }
 async function delPhoto(id){
-  if(!confirm('Supprimer cette photo ?'))return;
+  if(!await confirmSheet('Supprimer cette photo ?'))return;
   const {error}=await sb.from('gallery_photos').delete().eq('id',id);
   if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
   gallery=gallery.filter(p=>p.id!=id);renderGallery();toast('Photo supprimée');
@@ -3038,8 +3086,8 @@ function importData(inp){
   inp.value='';
 }
 async function confirmFullReset(){
-  if(!confirm('⚠️ Ceci va supprimer DÉFINITIVEMENT toutes tes données dans Supabase (mesures, animaux, coraux, journal, équipement, photos). Continuer ?'))return;
-  if(!confirm('Dernière confirmation : aucune récupération possible après ça. Vraiment tout supprimer ?'))return;
+  if(!await confirmSheet('⚠️ Ceci va supprimer DÉFINITIVEMENT toutes tes données (mesures, animaux, coraux, journal, équipement, photos).','Continuer'))return;
+  if(!await confirmSheet('Dernière confirmation : aucune récupération possible.','Tout supprimer'))return;
   toast('🗑 Suppression en cours...');
   try{
     await Promise.all([
