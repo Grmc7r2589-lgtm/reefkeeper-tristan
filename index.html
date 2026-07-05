@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ReefKeeper">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -25,6 +25,15 @@
 --r:16px;--rs:11px;--rx:8px;
 --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
 --mw:285px;--tbh:58px;
+}
+/* Mode app installée (PWA) : si l'iPhone ne fournit pas les zones sûres,
+   on garantit un minimum pour que l'heure ne recouvre jamais le header
+   et que la barre d'onglets épouse l'arrondi du bas. */
+@media (display-mode: standalone){
+  :root{
+    --st:max(env(safe-area-inset-top,0px),54px);
+    --sb:max(env(safe-area-inset-bottom,0px),24px);
+  }
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:var(--t1);overflow:hidden}
