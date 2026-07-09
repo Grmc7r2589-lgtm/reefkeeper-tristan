@@ -195,6 +195,17 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
    un éloignement de la cible, pas simplement une hausse ou une baisse. */
 .mdt{font-size:11px;font-weight:600;margin-top:2px;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:3px}
 .mdt.good{color:var(--green)}.mdt.bad{color:var(--red)}.mdt.flat{color:var(--t3)}
+/* Recherche d'espèce dans les formulaires d'ajout */
+.spq{max-height:210px;overflow-y:auto;margin-top:6px;border-radius:var(--rx);border:.5px solid rgba(45,142,232,.2);background:rgba(4,14,28,.9)}
+.spq:empty{display:none;border:0}
+.spi{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;border-bottom:.5px solid rgba(45,142,232,.08)}
+.spi:last-child{border-bottom:0}
+.spi:active{background:rgba(45,142,232,.14)}
+.spi img{width:34px;height:34px;border-radius:7px;object-fit:cover;flex-shrink:0}
+.spi-e{font-size:22px;width:34px;text-align:center;flex-shrink:0}
+.spi-n{font-size:13px;color:var(--t1);font-weight:600}
+.spi-s{font-size:11px;color:var(--t3);font-style:italic}
+.spq-none{padding:10px 11px;font-size:12px;color:var(--t3)}
 /* INPUT */
 .fd{margin-bottom:10px}
 .fd label{display:block;font-size:12px;color:var(--t2);margin-bottom:4px;font-weight:500}
@@ -692,6 +703,11 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
       </div>
       <div class="sh"><span class="shl">Plages de référence</span></div>
       <div class="gl"><table style="width:100%;font-size:12px;border-collapse:collapse" id="ref-t"></table></div>
+      <div class="sh"><span class="shl">Remise à zéro ciblée</span></div>
+      <div class="gl">
+        <button class="btn btn-g" style="width:100%;margin-bottom:8px" onclick="resetDiscoveries()">🧭 Réinitialiser les découvertes</button>
+        <button class="btn btn-g" style="width:100%" onclick="resetPlanned()">⏳ Vider les espèces en attente</button>
+      </div>
       <div class="sh"><span class="shl">Sauvegarde</span></div>
       <div class="gl">
         <button class="btn btn-o" style="margin-bottom:8px" onclick="exportData()">📤 Exporter JSON</button>
@@ -769,6 +785,10 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 <div class="mo" id="modal-animal">
   <div class="mdl">
     <div class="mh"></div><div class="mt" id="an-modal-title">Ajouter un animal</div>
+    <div class="fd"><label>Rechercher dans le catalogue</label>
+      <input type="text" id="an-search" placeholder="Ex : clown, Turbo, crevette..." autocomplete="off" oninput="searchSpecies('animal')">
+      <div class="spq" id="an-search-results"></div>
+    </div>
     <div class="fd"><label>Catégorie</label><select id="an-cat"><option value="fish">🐟 Poisson</option><option value="inv">🦐 Invertébré</option></select></div>
     <div class="fd"><label>Statut</label><select id="an-status"><option value="tank">✅ Dans le bac</option><option value="planned">⏳ Prévu / souhaité</option></select></div>
     <div class="fd"><label>Nom commun</label><input type="text" id="an-name" placeholder="Ex : Clown Maroon"></div>
@@ -794,6 +814,10 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 <div class="mo" id="modal-coral">
   <div class="mdl">
     <div class="mh"></div><div class="mt" id="co-modal-title">Ajouter un corail</div>
+    <div class="fd"><label>Rechercher dans le catalogue</label>
+      <input type="text" id="co-search" placeholder="Ex : zoanthus, euphyllia, acropora..." autocomplete="off" oninput="searchSpecies('coral')">
+      <div class="spq" id="co-search-results"></div>
+    </div>
     <div class="fd"><label>Statut</label><select id="co-status"><option value="planned">⏳ Prévu</option><option value="tank">✅ Dans le bac</option></select></div>
     <div class="fd"><label>Nom</label><input type="text" id="co-name" placeholder="Ex : Chalice Ultra Sherbert"></div>
     <div class="fd"><label>Type</label><select id="co-type"><option value="lps">LPS — Grand polype</option><option value="sps">SPS — Petit polype</option><option value="soft">Corail mou</option><option value="nem">Anémone</option><option value="autre">Autre</option></select></div>
@@ -2156,7 +2180,7 @@ function editAnimal(id){
   document.getElementById('an-notes').value=a.notes||'';
   document.getElementById('an-photo').value=a.photo||'';
   document.getElementById('an-photo-preview').innerHTML=a.photo?`<img src="${a.photo}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`:'';
-  closeModal('modal-creature');openModal('modal-animal');
+  closeModal('modal-creature');clearSpeciesSearch('animal');openModal('modal-animal');
 }
 async function delAnimal(id){
   const {error}=await sb.from('animals').delete().eq('id',id);
@@ -2171,6 +2195,64 @@ function previewAnimalPhoto(inp){
   r.onload=e=>{document.getElementById('an-photo-preview').innerHTML=`<img src="${e.target.result}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`};
   r.readAsDataURL(inp.files[0]);
 }
+// ═══════════════════════════════════════════
+// RECHERCHE D'ESPÈCE DANS LE CATALOGUE
+// ═══════════════════════════════════════════
+// Normalise pour une recherche insensible à la casse ET aux accents
+// ("clown" trouve "Clown", "anemone" trouve "Anémone").
+function normSp(s){return String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+
+// kind: 'animal' (poissons + invertébrés) | 'coral' (coraux)
+function searchSpecies(kind){
+  const pre=kind==='coral'?'co':'an';
+  const box=document.getElementById(pre+'-search-results');
+  const q=normSp(document.getElementById(pre+'-search').value.trim());
+  if(!box)return;
+  if(q.length<2){box.innerHTML='';return}
+  const pool=kind==='coral'?SPECIES_DB.coral:[...SPECIES_DB.fish,...SPECIES_DB.inv];
+  const hits=pool.filter(sp=>normSp(sp.name).includes(q)||normSp(sp.sci).includes(q)).slice(0,8);
+  if(!hits.length){box.innerHTML='<div class="spq-none">Aucune espèce trouvée — saisis les champs à la main.</div>';return}
+  box.innerHTML=hits.map(sp=>`
+    <div class="spi" onclick="pickSpecies('${kind}','${escAttr(sp.sci)}')">
+      ${sp.photo?`<img src="${escAttr(sp.photo)}" alt="">`:`<div class="spi-e">${sp.emoji||'🐟'}</div>`}
+      <div>
+        <div class="spi-n">${escHtml(sp.name)}</div>
+        <div class="spi-s">${escHtml(sp.sci)}</div>
+      </div>
+    </div>`).join('');
+}
+
+// Remplit le formulaire à partir de l'espèce choisie (sci est unique dans SPECIES_DB).
+function pickSpecies(kind,sci){
+  if(kind==='coral'){
+    const sp=SPECIES_DB.coral.find(s=>s.sci===sci);
+    if(!sp)return;
+    document.getElementById('co-name').value=sp.name;
+    document.getElementById('co-emoji').value=sp.emoji||'🪸';
+    // subtype du catalogue → valeurs du <select> co-type
+    const map={soft:'soft',lps:'lps',sps:'sps',anemone:'nem'};
+    const t=map[sp.subtype];
+    if(t)document.getElementById('co-type').value=t;
+  }else{
+    const isFish=SPECIES_DB.fish.some(s=>s.sci===sci);
+    const sp=(isFish?SPECIES_DB.fish:SPECIES_DB.inv).find(s=>s.sci===sci);
+    if(!sp)return;
+    document.getElementById('an-cat').value=isFish?'fish':'inv';
+    document.getElementById('an-name').value=sp.name;
+    document.getElementById('an-sci').value=sp.sci;
+    document.getElementById('an-emoji').value=sp.emoji||(isFish?'🐟':'🦐');
+  }
+  clearSpeciesSearch(kind);
+  toast('✓ Champs pré-remplis');
+}
+
+// Vide le champ de recherche et ses suggestions.
+function clearSpeciesSearch(kind){
+  const pre=kind==='coral'?'co':'an';
+  const i=document.getElementById(pre+'-search'); if(i)i.value='';
+  const b=document.getElementById(pre+'-search-results'); if(b)b.innerHTML='';
+}
+
 async function saveAnimal(){
   const name=document.getElementById('an-name').value.trim();if(!name){toast('⚠️ Donne un nom');return}
   const id=document.getElementById('an-id').value;
@@ -2192,6 +2274,7 @@ async function saveAnimal(){
   pendingAnPhoto=null;
   closeModal('modal-animal');
   ['an-name','an-sci','an-emoji','an-notes','an-photo'].forEach(x=>document.getElementById(x).value='');
+  clearSpeciesSearch('animal');
   document.getElementById('an-id').value='';
   document.getElementById('an-photo-preview').innerHTML='';
   document.getElementById('an-modal-title').textContent='Ajouter un animal';
@@ -2270,7 +2353,7 @@ function editCoral(id){
   document.getElementById('co-notes').value=c.notes||'';
   document.getElementById('co-photo').value=c.photo||'';
   document.getElementById('co-photo-preview').innerHTML=c.photo?`<img src="${c.photo}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`:'';
-  closeModal('modal-creature');openModal('modal-coral');
+  closeModal('modal-creature');clearSpeciesSearch('coral');openModal('modal-coral');
 }
 async function delCoral(id){
   const {error}=await sb.from('corals').delete().eq('id',id);
@@ -2306,6 +2389,7 @@ async function saveCoral(){
   pendingCoPhoto=null;
   closeModal('modal-coral');
   ['co-name','co-emoji','co-location','co-notes','co-photo'].forEach(x=>document.getElementById(x).value='');
+  clearSpeciesSearch('coral');
   document.getElementById('co-id').value='';
   document.getElementById('co-photo-preview').innerHTML='';
   document.getElementById('co-modal-title').textContent='Ajouter un corail';
@@ -3169,6 +3253,42 @@ function importData(inp){
   toast('⚠️ Import désactivé avec Supabase — ajoute tes données manuellement ou contacte-moi pour une restauration complète');
   inp.value='';
 }
+// Remet à zéro uniquement les décisions de la page Découvertes (swipes).
+// Les espèces réapparaîtront dans la pile de découverte.
+async function resetDiscoveries(){
+  const n=Object.keys(speciesDecisions).length;
+  if(!n){toast('Aucune découverte à réinitialiser');return}
+  if(!await confirmSheet('Réinitialiser les '+n+' décision(s) de découverte ? Les espèces reviendront dans la pile.','Réinitialiser'))return;
+  const {error}=await sb.from('species_decisions').delete().eq('owner_id',currentUser.id);
+  if(error){console.error(error);toast('⚠️ Échec de la réinitialisation');return}
+  speciesDecisions={};
+  if(currentPage==='decouvertes')renderDec();
+  toast('✓ Découvertes réinitialisées');
+}
+
+// Vide la liste des espèces « ⏳ Prévu » (animaux + coraux).
+// Ne touche pas à ce qui est déjà dans le bac ni aux individus décédés.
+async function resetPlanned(){
+  const pa=animals.filter(a=>a.status==='planned');
+  const pc=corals.filter(c=>c.status==='planned');
+  const n=pa.length+pc.length;
+  if(!n){toast('Aucune espèce en attente');return}
+  if(!await confirmSheet('Supprimer les '+n+' espèce(s) en attente ? Ce qui est déjà dans le bac est conservé.','Supprimer'))return;
+  // Supabase renvoie {error} au lieu de lever une exception : on le teste.
+  if(pa.length){
+    const {error}=await sb.from('animals').delete().eq('owner_id',currentUser.id).eq('status','planned');
+    if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  }
+  if(pc.length){
+    const {error}=await sb.from('corals').delete().eq('owner_id',currentUser.id).eq('status','planned');
+    if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
+  }
+  animals=animals.filter(a=>a.status!=='planned');
+  corals=corals.filter(c=>c.status!=='planned');
+  renderPop();renderAquarium();
+  toast('✓ Liste d\'attente vidée');
+}
+
 async function confirmFullReset(){
   if(!await confirmSheet('⚠️ Ceci va supprimer DÉFINITIVEMENT toutes tes données (mesures, animaux, coraux, journal, équipement, photos).','Continuer'))return;
   if(!await confirmSheet('Dernière confirmation : aucune récupération possible.','Tout supprimer'))return;
@@ -3180,7 +3300,8 @@ async function confirmFullReset(){
       sb.from('corals').delete().eq('owner_id',currentUser.id),
       sb.from('journal_entries').delete().eq('owner_id',currentUser.id),
       sb.from('equipment').delete().eq('owner_id',currentUser.id),
-      sb.from('gallery_photos').delete().eq('owner_id',currentUser.id)
+      sb.from('gallery_photos').delete().eq('owner_id',currentUser.id),
+      sb.from('species_decisions').delete().eq('owner_id',currentUser.id)
     ]);
     await sb.from('app_settings').update({daily_done:{},weekly_done:{}}).eq('owner_id',currentUser.id);
     toast('✓ Données supprimées, rechargement...');
