@@ -189,6 +189,22 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 .bv{font-size:21px;font-weight:700;line-height:1}
 .bv.t{color:var(--teal)}.bv.a{color:var(--amber)}.bv.b{color:var(--o4)}.bv.g{color:var(--green)}.bv.r{color:var(--red)}
 .bl{font-size:10px;color:var(--t3);margin-top:4px;font-weight:500}
+/* Derniers relevés en pastilles rondes, dans la continuité des cercles du bilan.
+   Le contour porte le statut : teal = ok, ambre = à surveiller, rouge = hors plage. */
+.pm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;padding:4px 0}
+.pm{display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .12s}
+.pm:active{transform:scale(.95)}
+.pm-c{width:88px;height:88px;border-radius:50%;background:var(--bg1);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6px}
+.pm-c.ok{border:2px solid rgba(0,201,177,.45)}
+.pm-c.warn{border:2px solid rgba(245,166,35,.55)}
+.pm-c.danger{border:2px solid rgba(255,93,108,.6)}
+.pm-c.nd{border:2px dashed rgba(150,164,255,.25)}
+.pm-v{font-size:17px;font-weight:700;line-height:1.05}
+.pm-v.ok{color:var(--teal)}.pm-v.warn{color:var(--amber)}.pm-v.danger{color:var(--red)}.pm-v.nd{color:var(--t4);font-size:13px}
+.pm-u{font-size:9.5px;color:var(--t3);margin-top:2px}
+.pm-n{font-size:10.5px;color:var(--t2);font-weight:600;margin-top:6px;text-align:center;line-height:1.2}
+.pm-a{font-size:9.5px;color:var(--t4);margin-top:2px}
+.pm-a.old{color:var(--amber)}
 /* MESURE ROWS */
 .mr{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:.5px solid rgba(150,164,255,.07);cursor:pointer;transition:background .12s}
 .mr:last-child{border-bottom:none}
@@ -1867,19 +1883,21 @@ function renderAquarium(){
   // Derniers relevés
   const allP=['temp','sal','ph','kh','no3','no2','nh3','ca','mg','po4','tds'];
   const pv=getPrev();
-  document.getElementById('last-measures').innerHTML=allP.map(p=>{
+  document.getElementById('last-measures').innerHTML=`<div class="pm-grid">`+allP.map(p=>{
     const m=l[p];const v=m?fv(p,m.value):null;
     const s=v!==null?gSt(p,v):'nd';
     const dl=(m&&v!==null)?deltaInfo(p,m.value,pv[p]):null;
-    return`<div class="mr" onclick="openDashboardParamActions('${p}')">
-      <div><div class="mn">${PC[p].label}</div>${PC[p].kit?`<div class="mk">${PC[p].kit}</div>`:''}</div>
-      <div style="text-align:right">
-        <div class="mv ${s}">${v!==null?v+' '+PC[p].unit:'Non mesuré'}</div>
-        <div class="md" ${m&&(Date.now()-m.ts)>7*864e5?'style="color:var(--amber)"':''}>${m?fage(m.ts):'—'}</div>
-        ${dl?`<div class="mdt ${dl.cls}"><span>${dl.arrow}</span><span>${dl.txt}</span></div>`:''}
+    const old=m&&(Date.now()-m.ts)>7*864e5;
+    return`<div class="pm" onclick="openDashboardParamActions('${p}')">
+      <div class="pm-c ${s}">
+        <div class="pm-v ${s}">${v!==null?v:'—'}</div>
+        ${v!==null&&PC[p].unit?`<div class="pm-u">${PC[p].unit}</div>`:''}
       </div>
+      <div class="pm-n">${PC[p].label}</div>
+      <div class="pm-a ${old?'old':''}">${m?fage(m.ts):'non mesuré'}</div>
+      ${dl?`<div class="mdt ${dl.cls}" style="margin-top:1px"><span>${dl.arrow}</span><span>${dl.txt}</span></div>`:''}
     </div>`;
-  }).join('');
+  }).join('')+`</div>`;
 
   // Daily checks
   const today=new Date().toDateString();
