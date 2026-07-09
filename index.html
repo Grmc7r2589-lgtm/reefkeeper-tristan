@@ -592,6 +592,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
           <option value="no3">NO₃</option><option value="no2">NO₂</option>
           <option value="nh3">NH₃</option><option value="ca">Calcium</option>
           <option value="mg">Magnésium</option><option value="po4">PO₄</option>
+          <option value="tds">TDS eau osmosée</option>
         </select>
       </div>
       <div id="hcw" class="gl"><div class="cw"><canvas id="hch"></canvas></div><div id="hch-list"></div></div>
@@ -766,6 +767,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         <option value="ca">💠 Calcium (mg/L) — Kit Pro Multi</option>
         <option value="mg">🔵 Magnésium (mg/L) — Kit Pro Multi</option>
         <option value="po4">🟤 PO₄ (mg/L)</option>
+        <option value="tds">💧 TDS eau osmosée (ppm) — Arka myAqua</option>
       </select>
     </div>
     <div class="fd"><label>Valeur</label><input type="number" id="av" step="any" placeholder="Ex : 25.2" inputmode="decimal"></div>
@@ -929,7 +931,8 @@ const PC = {
   nh3: {label:'NH₃/NH₄',unit:'mg/L',target:0,min:0,max:0.05,kit:'Kit MCP'},
   ca:  {label:'Calcium',unit:'mg/L',target:430,min:400,max:450,kit:'Kit Pro Multi'},
   mg:  {label:'Magnésium',unit:'mg/L',target:1350,min:1250,max:1400,kit:'Kit Pro Multi'},
-  po4: {label:'PO₄',unit:'mg/L',target:0.05,min:0.02,max:0.10,kit:''}
+  po4: {label:'PO₄',unit:'mg/L',target:0.05,min:0.02,max:0.10,kit:''},
+  tds: {label:'TDS eau osmosée',unit:'ppm',target:0,min:0,max:5,kit:'Arka myAqua TDS'}
 };
 
 // Explications pédagogiques par paramètre : pourquoi ça compte, causes
@@ -995,6 +998,12 @@ const PARAM_GUIDANCE = {
     low:"Un PO₄ très bas (proche de 0) dans un bac jeune n'est pas anormal — il n'y a pas encore beaucoup de matière organique en décomposition.",
     high:"Un PO₄ élevé vient souvent d'une suralimentation, d'un substrat qui en relargue, ou d'une eau d'osmose mal filtrée.",
     action:"Si élevé : vérifie la qualité de ton eau osmosée (TDS-mètre), réduis la nourriture, un média anti-phosphate peut aider."
+  },
+  tds:{
+    why:"Le TDS mesure les solides dissous dans ton eau osmosée. Une eau à 0 ppm garantit que tu n'introduis ni phosphates, ni silicates, ni métaux dans le bac à chaque changement d'eau ou complément d'évaporation.",
+    low:"Impossible d'être trop bas : 0 ppm est la perfection.",
+    high:"Un TDS qui monte signale une membrane d'osmoseur fatiguée ou une résine déionisante saturée.",
+    action:"Au-delà de 5 ppm, change la résine DI ; si ça ne suffit pas, contrôle la membrane. Mesure aussi le TDS de l'eau du robinet en entrée pour estimer le rendement."
   }
 };
 
@@ -1638,9 +1647,11 @@ async function fetchWeather(){
 // ═══════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════
-function gSt(p,v){const c=PC[p];if(!c)return'ok';if(v<c.min||v>c.max)return'danger';const m=(c.max-c.min)*.15;if(v<c.min+m||v>c.max-m)return'warn';return'ok'}
+// Une valeur proche d'une borne n'est "à surveiller" que si la cible n'est
+// pas cette borne : TDS/NO₂/NH₃ à 0 (= cible) est parfait, pas une alerte.
+function gSt(p,v){const c=PC[p];if(!c)return'ok';if(v<c.min||v>c.max)return'danger';const m=(c.max-c.min)*.15;if((v<c.min+m&&c.target>c.min)||(v>c.max-m&&c.target<c.max))return'warn';return'ok'}
 function gPos(p,v){const c=PC[p];if(!c)return 50;return Math.max(2,Math.min(98,(v-c.min)/(c.max-c.min)*100))}
-function fv(p,v){if(p==='po4'||p==='no2'||p==='nh3')return parseFloat(v.toFixed(3));if(p==='mg'||p==='ca')return Math.round(v);return parseFloat(v.toFixed(2))}
+function fv(p,v){if(p==='po4'||p==='no2'||p==='nh3')return parseFloat(v.toFixed(3));if(p==='mg'||p==='ca'||p==='tds')return Math.round(v);return parseFloat(v.toFixed(2))}
 function getLatest(){const l={};[...measures].sort((a,b)=>a.ts-b.ts).forEach(m=>l[m.param]=m);return l;}
 // Avant-dernier relevé de chaque paramètre (undefined s'il n'y en a qu'un seul).
 function getPrev(){
@@ -1808,7 +1819,7 @@ function renderAquarium(){
     <div class="bx"><div class="bv a">${measures.length}</div><div class="bl">Relevés</div></div>`;
 
   // Derniers relevés
-  const allP=['temp','sal','ph','kh','no3','no2','nh3','ca','mg','po4'];
+  const allP=['temp','sal','ph','kh','no3','no2','nh3','ca','mg','po4','tds'];
   const pv=getPrev();
   document.getElementById('last-measures').innerHTML=allP.map(p=>{
     const m=l[p];const v=m?fv(p,m.value):null;
