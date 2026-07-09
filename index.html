@@ -1297,7 +1297,10 @@ async function doLogin(){
 
 async function doLogout(){
   if(!await confirmSheet('Te déconnecter ?','Se déconnecter'))return;
-  await sb.auth.signOut();
+  // Si le réseau lâche, signOut() rejette. On déconnecte quand même en local :
+  // rester coincé sur un écran connecté serait pire qu'une session serveur résiduelle.
+  try{ await sb.auth.signOut(); }
+  catch(err){ console.warn('signOut réseau échoué, déconnexion locale:', err); }
   currentUser=null;
   location.reload();
 }
@@ -2015,7 +2018,7 @@ async function saveEditMeasure(){
   if(error){console.error(error);toast('⚠️ Échec de la modification');return}
   m.value=v;m.comment=comment;m.photo=photoUrl;
   pendingEditMeasurePhoto=null;
-  closeModal('modal-edit-measure');renderHistory();toast('✓ Mesure modifiée');
+  closeModal('modal-edit-measure');renderHistory();renderAquarium();toast('✓ Mesure modifiée');
 }
 function viewMeasurePhoto(id){
   const m=measures.find(x=>x.id===id);if(!m||!m.photo)return;
@@ -2029,7 +2032,7 @@ async function delMeasure(id){
   if(!await confirmSheet('Supprimer cette mesure ?'))return;
   const {error}=await sb.from('measures').delete().eq('id',id);
   if(error){console.error(error);toast('⚠️ Échec de la suppression');return}
-  measures=measures.filter(m=>m.id!=id);renderHistory();toast('Mesure supprimée');
+  measures=measures.filter(m=>m.id!=id);renderHistory();renderAquarium();toast('Mesure supprimée');
 }
 function openMeasureActions(id){
   const m=measures.find(x=>x.id==id);if(!m)return;
