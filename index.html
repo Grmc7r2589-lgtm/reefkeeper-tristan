@@ -185,10 +185,10 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 /* BILAN */
 .bg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:11px}
 .bg4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px}
-.bx{background:var(--bg1);border:.5px solid rgba(150,164,255,.1);border-radius:var(--rs);padding:11px 8px;text-align:center}
-.bv{font-size:20px;font-weight:700;line-height:1}
+.bx{width:96px;height:96px;border-radius:50%;background:var(--bg1);border:2px solid rgba(245,224,78,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:0 auto}
+.bv{font-size:21px;font-weight:700;line-height:1}
 .bv.t{color:var(--teal)}.bv.a{color:var(--amber)}.bv.b{color:var(--o4)}.bv.g{color:var(--green)}.bv.r{color:var(--red)}
-.bl{font-size:10px;color:var(--t3);margin-top:3px;font-weight:500}
+.bl{font-size:10px;color:var(--t3);margin-top:4px;font-weight:500}
 /* MESURE ROWS */
 .mr{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:.5px solid rgba(150,164,255,.07);cursor:pointer;transition:background .12s}
 .mr:last-child{border-bottom:none}
@@ -418,7 +418,8 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 .disc-cat-title{font-size:13px;font-weight:700;color:var(--t2);margin:16px 0 8px;display:flex;align-items:center;gap:6px}
 .disc-cat-title:first-child{margin-top:0}
 .disc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px}
-.disc-tile{position:relative;background:linear-gradient(160deg,var(--bg1),var(--bg2));border:.5px solid rgba(150,164,255,.15);border-radius:var(--rs);overflow:hidden;cursor:default}
+.disc-tile{position:relative;background:linear-gradient(160deg,var(--bg1),var(--bg2));border:.5px solid rgba(150,164,255,.15);border-radius:var(--rs);overflow:hidden;cursor:default;transition:transform .12s}
+.disc-tile:active{transform:scale(.96)}
 .disc-tile-img{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:34px;background:linear-gradient(135deg,var(--bg2),var(--bg3));overflow:hidden}
 .disc-tile-img img{width:100%;height:100%;object-fit:cover}
 .disc-tile-body{padding:7px 8px 9px}
@@ -570,9 +571,11 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 
     <!-- MON AQUARIUM -->
     <div class="pg active" id="pg-aquarium">
+      <div id="hero-photo"></div>
       <div id="phase-card"></div>
       <div id="main-alerts"></div>
       <div class="bg3" id="bilan-top"></div>
+      <div id="empty-hint"></div>
       <div class="sh"><span class="shl">Derniers relevés</span><span class="shr" onclick="openModal('modal-mesure')">+ Saisir</span></div>
       <div class="gl" id="last-measures"></div>
       <div class="sh"><span class="shl">Aujourd'hui</span></div>
@@ -1691,6 +1694,15 @@ function deltaInfo(p,cur,prevM){
 function daysFromStart(){return Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000)}
 function getPhase(){const d=daysFromStart();return PHASES.find(p=>d<=p.days)||PHASES[PHASES.length-1]}
 function fdate(ts,opts){return new Date(ts).toLocaleDateString('fr-FR',opts||{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+// Âge relatif d'un relevé : plus parlant qu'une date pour repérer d'un coup
+// d'œil un paramètre qui n'a pas été retesté depuis longtemps.
+function fage(ts){
+  const h=Math.floor((Date.now()-ts)/36e5);
+  if(h<1)return"à l'instant";
+  if(h<24)return`il y a ${h} h`;
+  const d=Math.floor(h/24);
+  return`il y a ${d} j`;
+}
 function fdateS(ts){return new Date(ts).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
 function uid(){return Date.now()+Math.floor(Math.random()*1000)}
 
@@ -1819,12 +1831,38 @@ function renderAquarium(){
   if(warns.length)ah+=`<div class="al a-warn" onclick='openParamGuidanceModal(${JSON.stringify(warns.map(([p])=>p))})' style="cursor:pointer"><span class="ai">⚠️</span><div><strong>${warns.length} à surveiller :</strong> ${warns.map(([p])=>PC[p].label).join(', ')}</div></div>`;
   document.getElementById('main-alerts').innerHTML=ah;
 
+  // Photo héros : la plus récente de la galerie, en bandeau au-dessus de tout.
+  const heroEl=document.getElementById('hero-photo');
+  if(heroEl){
+    const latest=[...gallery].sort((a,b)=>b.ts-a.ts)[0];
+    heroEl.innerHTML=latest?`
+      <div onclick="nav('gallery')" style="position:relative;border-radius:var(--r);overflow:hidden;margin-bottom:11px;cursor:pointer;height:150px">
+        <img src="${escAttr(latest.src)}" style="width:100%;height:100%;object-fit:cover;display:block">
+        <div style="position:absolute;left:10px;bottom:10px;background:var(--yel);color:var(--yelT);font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px">📷 ${fage(latest.ts)}</div>
+      </div>`:'';
+  }
+
   // Bilan
   const tank=animals.filter(a=>a.status==='tank');
   document.getElementById('bilan-top').innerHTML=`
     <div class="bx"><div class="bv t">${days}j</div><div class="bl">En marche</div></div>
     <div class="bx"><div class="bv b">${tank.length}</div><div class="bl">Animaux</div></div>
     <div class="bx"><div class="bv a">${measures.length}</div><div class="bl">Relevés</div></div>`;
+
+  // Bac encore vide : message encourageant calculé sur la maturité requise
+  // par l'espèce de poisson la plus accessible du catalogue.
+  const emptyEl=document.getElementById('empty-hint');
+  if(emptyEl){
+    if(!tank.length){
+      const firstFishDay=Math.min(...SPECIES_DB.fish.map(s=>s.minDays));
+      const remaining=firstFishDay-days;
+      emptyEl.innerHTML=`<div style="text-align:center;font-size:12.5px;color:var(--t2);background:rgba(150,164,255,.06);border-radius:var(--rs);padding:10px 14px;margin-bottom:11px">${
+        remaining>0
+          ?`🐟 Ton bac se prépare — encore ~${remaining} j avant tes premiers habitants.`
+          :`🐟 Ton bac a la maturité pour ses premiers habitants — direction Découvertes !`
+      }</div>`;
+    }else emptyEl.innerHTML='';
+  }
 
   // Derniers relevés
   const allP=['temp','sal','ph','kh','no3','no2','nh3','ca','mg','po4','tds'];
@@ -1837,7 +1875,7 @@ function renderAquarium(){
       <div><div class="mn">${PC[p].label}</div>${PC[p].kit?`<div class="mk">${PC[p].kit}</div>`:''}</div>
       <div style="text-align:right">
         <div class="mv ${s}">${v!==null?v+' '+PC[p].unit:'Non mesuré'}</div>
-        <div class="md">${m?fdate(m.ts):'—'}</div>
+        <div class="md" ${m&&(Date.now()-m.ts)>7*864e5?'style="color:var(--amber)"':''}>${m?fage(m.ts):'—'}</div>
         ${dl?`<div class="mdt ${dl.cls}"><span>${dl.arrow}</span><span>${dl.txt}</span></div>`:''}
       </div>
     </div>`;
