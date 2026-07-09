@@ -191,6 +191,10 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
 .mv{font-size:15px;font-weight:700}
 .mv.ok{color:var(--teal)}.mv.warn{color:var(--amber)}.mv.danger{color:var(--red)}.mv.nd{color:var(--t4)}
 .md{font-size:10px;color:var(--t4);margin-top:2px;text-align:right}
+/* Variation vs relevé précédent. Le vert/rouge indique un rapprochement ou
+   un éloignement de la cible, pas simplement une hausse ou une baisse. */
+.mdt{font-size:11px;font-weight:600;margin-top:2px;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:3px}
+.mdt.good{color:var(--green)}.mdt.bad{color:var(--red)}.mdt.flat{color:var(--t3)}
 /* INPUT */
 .fd{margin-bottom:10px}
 .fd label{display:block;font-size:12px;color:var(--t2);margin-bottom:4px;font-weight:500}
@@ -1610,6 +1614,33 @@ function gSt(p,v){const c=PC[p];if(!c)return'ok';if(v<c.min||v>c.max)return'dang
 function gPos(p,v){const c=PC[p];if(!c)return 50;return Math.max(2,Math.min(98,(v-c.min)/(c.max-c.min)*100))}
 function fv(p,v){if(p==='po4'||p==='no2'||p==='nh3')return parseFloat(v.toFixed(3));if(p==='mg'||p==='ca')return Math.round(v);return parseFloat(v.toFixed(2))}
 function getLatest(){const l={};[...measures].sort((a,b)=>a.ts-b.ts).forEach(m=>l[m.param]=m);return l;}
+// Avant-dernier relevé de chaque paramètre (undefined s'il n'y en a qu'un seul).
+function getPrev(){
+  const by={};
+  [...measures].sort((a,b)=>a.ts-b.ts).forEach(m=>{(by[m.param]=by[m.param]||[]).push(m)});
+  const r={};
+  for(const p in by){const a=by[p];if(a.length>=2)r[p]=a[a.length-2];}
+  return r;
+}
+// Variation entre le dernier relevé et le précédent.
+// Le vert/rouge ne dépend PAS du sens de la flèche : il indique si la valeur
+// se rapproche (good) ou s'éloigne (bad) de la cible PC[p].target. Une baisse
+// de NO₃ quand on est trop haut est une bonne nouvelle, une baisse quand on
+// est déjà sous la cible n'en est pas une.
+function deltaInfo(p,cur,prevM){
+  if(!prevM)return null;
+  const prev=prevM.value;
+  const d=cur-prev;
+  const c=PC[p];
+  if(!c||Math.abs(d)<1e-9)return{txt:'—',cls:'flat',arrow:'→'};
+  const dd=fv(p,Math.abs(d));
+  if(dd===0)return{txt:'—',cls:'flat',arrow:'→'};       // écart réel mais nul après arrondi
+  // Distance à la cible : rapprochement = vert, éloignement = rouge.
+  // Distance inchangée (ex. 440→420 pour une cible de 430) = neutre, pas rouge.
+  const dNew=Math.abs(cur-c.target), dOld=Math.abs(prev-c.target);
+  const cls = Math.abs(dNew-dOld)<1e-9 ? 'flat' : (dNew<dOld ? 'good' : 'bad');
+  return{txt:(d>0?'+':'−')+dd,cls,arrow:d>0?'↗':'↘'};
+}
 function daysFromStart(){return Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000)}
 function getPhase(){const d=daysFromStart();return PHASES.find(p=>d<=p.days)||PHASES[PHASES.length-1]}
 function fdate(ts,opts){return new Date(ts).toLocaleDateString('fr-FR',opts||{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
@@ -1750,14 +1781,17 @@ function renderAquarium(){
 
   // Derniers relevés
   const allP=['temp','sal','ph','kh','no3','no2','nh3','ca','mg','po4'];
+  const pv=getPrev();
   document.getElementById('last-measures').innerHTML=allP.map(p=>{
     const m=l[p];const v=m?fv(p,m.value):null;
     const s=v!==null?gSt(p,v):'nd';
+    const dl=(m&&v!==null)?deltaInfo(p,m.value,pv[p]):null;
     return`<div class="mr" onclick="openDashboardParamActions('${p}')">
       <div><div class="mn">${PC[p].label}</div>${PC[p].kit?`<div class="mk">${PC[p].kit}</div>`:''}</div>
       <div style="text-align:right">
         <div class="mv ${s}">${v!==null?v+' '+PC[p].unit:'Non mesuré'}</div>
         <div class="md">${m?fdate(m.ts):'—'}</div>
+        ${dl?`<div class="mdt ${dl.cls}"><span>${dl.arrow}</span><span>${dl.txt}</span></div>`:''}
       </div>
     </div>`;
   }).join('');
