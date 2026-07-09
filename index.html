@@ -457,7 +457,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
     <div class="sm-hd" onclick="nav('aquarium')" style="cursor:pointer">
       <div class="sm-title">🐠 ReefKeeper Tristan</div>
       <div class="sm-sub">Reefer 300 XL G3 · Depuis le 8 juin 2026</div>
-      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v4.9</div>
+      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v5.0</div>
     </div>
     <div class="sm-body">
       <div class="sm-sec">Outils</div>
@@ -669,6 +669,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         <div class="sb" onclick="setCalc('ca',this)">Ca</div>
         <div class="sb" onclick="setCalc('mg',this)">Mg</div>
         <div class="sb" onclick="setCalc('water',this)">💧 Eau</div>
+        <div class="sb" onclick="setCalc('sal',this)">🧂 Sal</div>
       </div>
       <div class="gl" id="calc-content"></div>
     </div>
@@ -717,7 +718,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:-app
         </label>
         <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
       </div>
-      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v4.9<br><span id="pwa-diag" style="font-size:9px"></span></div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v5.0<br><span id="pwa-diag" style="font-size:9px"></span></div>
     </div>
 
   </div><!-- /cnt -->
@@ -1264,7 +1265,7 @@ window.pwaDiag='';
     window.addEventListener('pageshow', pin);
   }
 })();
-window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v4.9 · '+window.pwaDiag;}});
+window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v5.0 · '+window.pwaDiag;}});
 // Service worker : rend l'app installable (PWA) et disponible hors ligne en lecture.
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
@@ -2130,7 +2131,7 @@ function openCreature(id){
       ${!imgSrc?`<div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,var(--bg2),var(--bg3));display:flex;align-items:center;justify-content:center;font-size:28px;border:.5px solid rgba(0,201,177,.3);overflow:hidden;flex-shrink:0">${a.emoji||'🐟'}</div>`:''}
       <div>
         <div style="font-size:18px;font-weight:700">${escHtml(a.name)}</div>
-        <div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:2px">${a.sci}</div>
+        <div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:2px">${escHtml(a.sci)}</div>
         <span class="cbadge ${inTank?'b-it':a.status==='dead'?'b-de':'b-pl'}" style="margin-top:4px">${inTank?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
         ${(()=>{const sp=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv].find(s=>s.sci===a.sci);return sp?`<div style="margin-top:6px">${priceLabelHTML(sp.price??null)}</div>`:''})()}
       </div>
@@ -2327,7 +2328,7 @@ function openCoral(id){
     <div class="al a-warn"><span class="ai">🔒</span><div>Ajoute ce corail au bac pour débloquer sa fiche.</div></div>
     <div class="tip" style="opacity:.4"><div class="tip-h">💡 Aperçu</div><div class="tip-li">${tips.care[0]}</div><div class="tip-li" style="color:var(--t4)">… fiche complète après introduction</div></div>
     `}
-    ${c.location?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">📍 Emplacement</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${c.location}</div></div>`:''}
+    ${c.location?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">📍 Emplacement</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${escHtml(c.location)}</div></div>`:''}
     ${c.notes?`<div class="gls" style="margin-top:8px"><div style="font-size:11px;color:var(--t3)">Notes</div><div style="font-size:13px;color:var(--t2);line-height:1.5;margin-top:2px">${escHtml(c.notes)}</div></div>`:''}
     <div class="sh" style="margin:14px 0 8px"><span class="shl">Suivi de croissance</span><label style="font-size:13px;color:var(--o3);cursor:pointer">+ Ajouter<input type="file" accept="image/*" style="display:none" onchange="addLinkedPhoto(this,'coral','${id}')"></label></div>
     <div class="gg" id="linked-gallery" style="margin-bottom:10px"></div>
@@ -3084,8 +3085,32 @@ async function addAdoptedSpecies(sp){
 // CALCULATEUR
 // ═══════════════════════════════════════════
 function setCalc(t,el){calcType=t;document.querySelectorAll('#cseg .sb').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderCalcContent()}
+// Conversion salinité ppt ↔ densité SG à 25 °C.
+// Facteur linéaire calé sur la référence récifale 35 ppt = 1,026 SG
+// (approximation valable sur la plage utile 30–40 ppt à 24–26 °C).
+const SAL_K=35/0.026; // ≈ 1346.15 ppt par unité de SG au-dessus de 1
+function convSal(src){
+  const pptEl=document.getElementById('sal-ppt'), sgEl=document.getElementById('sal-sg');
+  if(!pptEl||!sgEl)return;
+  if(src==='ppt'){
+    const v=parseFloat(pptEl.value);
+    if(isNaN(v)){sgEl.value='';return}
+    sgEl.value=(1+v/SAL_K).toFixed(3);
+  }else{
+    const v=parseFloat(sgEl.value);
+    if(isNaN(v)){pptEl.value='';return}
+    pptEl.value=((v-1)*SAL_K).toFixed(1);
+  }
+}
 function renderCalcContent(){
   const el=document.getElementById('calc-content');
+  if(calcType==='sal'){
+    el.innerHTML=`<div style="font-size:12px;color:var(--t3);margin-bottom:10px">Conversion entre salinité (ppt) et densité (SG) à 25 °C — pratique quand deux réfractomètres n'affichent pas la même échelle.</div>
+      <div class="fd"><label>Salinité (ppt)</label><input type="number" id="sal-ppt" value="35" step="0.1" inputmode="decimal" oninput="convSal('ppt')"></div>
+      <div class="fd"><label>Densité (SG)</label><input type="number" id="sal-sg" value="1.026" step="0.001" inputmode="decimal" oninput="convSal('sg')"></div>
+      <div style="font-size:11px;color:var(--t4);margin-top:4px">Référence : 35 ppt ≈ 1,026 SG à 25 °C. La température influence la lecture — approximation valable autour de 24–26 °C.</div>`;
+    return;
+  }
   if(calcType==='water'){
     el.innerHTML=`<div class="fd"><label>Volume net (L)</label><input type="number" id="cv" value="300" inputmode="decimal"></div><div class="fd"><label>Pourcentage à changer (%)</label><input type="number" id="cpct" value="10" inputmode="decimal"></div><button class="btn btn-o" onclick="calcWater()">Calculer</button><div id="cr2"></div>`;return;
   }
