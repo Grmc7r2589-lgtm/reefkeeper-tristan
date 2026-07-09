@@ -21,7 +21,7 @@
 /* Palette indigo profond + jaune d'action, inspirée de « Blue — upgrade your reef life » */
 --bg0:#0c1238;--bg1:#131a4a;--bg2:#1c2560;--bg3:#263178;
 --o1:#3b4cc0;--o2:#5061d6;--o3:#6b7cf0;--o4:#96a4ff;
---yel:#f5e04e;--yelT:#171d4e; /* jaune d'action + texte foncé posé dessus */
+--yel:#4de3ff;--yelT:#0b1c3a; /* cyan lagon d'action + texte foncé posé dessus */
 --teal:#00c9b1;--td:rgba(0,201,177,.15);
 --amber:#f5a623;--ad:rgba(245,166,35,.12);
 --red:#ff5d6c;--rd:rgba(255,93,108,.12);
@@ -185,7 +185,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 /* BILAN */
 .bg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:11px}
 .bg4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px}
-.bx{width:96px;height:96px;border-radius:50%;background:var(--bg1);border:2px solid rgba(245,224,78,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:0 auto}
+.bx{width:96px;height:96px;border-radius:50%;background:var(--bg1);border:2px solid rgba(77,227,255,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:0 auto}
 .bv{font-size:21px;font-weight:700;line-height:1}
 .bv.t{color:var(--teal)}.bv.a{color:var(--amber)}.bv.b{color:var(--o4)}.bv.g{color:var(--green)}.bv.r{color:var(--red)}
 .bl{font-size:10px;color:var(--t3);margin-top:4px;font-weight:500}
@@ -233,7 +233,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 20px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
 .btn:active{transform:scale(.97)}
-.btn-o{background:var(--yel);color:var(--yelT);width:100%;box-shadow:0 6px 20px rgba(245,224,78,.25);font-weight:700}
+.btn-o{background:var(--yel);color:var(--yelT);width:100%;box-shadow:0 6px 20px rgba(77,227,255,.25);font-weight:700}
 .btn-t{background:linear-gradient(135deg,#007a6a,var(--teal));color:#fff;width:100%}
 .btn-g{background:rgba(150,164,255,.08);color:var(--t1);border:.5px solid rgba(150,164,255,.2)}
 .btn-r{background:var(--rd);color:var(--red);border:.5px solid rgba(255,93,108,.3)}
@@ -2037,7 +2037,7 @@ function renderHistory(){
     histChart=new Chart(ctx,{type:'line',data:{
       labels:data.map(d=>new Date(d.ts).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})),
       datasets:[
-        {label:cfg.label,data:data.map(d=>d.value),borderColor:'#f5e04e',backgroundColor:'rgba(245,224,78,.08)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#f5e04e',tension:.35,fill:true},
+        {label:cfg.label,data:data.map(d=>d.value),borderColor:'#4de3ff',backgroundColor:'rgba(77,227,255,.08)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#4de3ff',tension:.35,fill:true},
         {label:'Min',data:data.map(()=>cfg.min),borderColor:'rgba(255,77,77,.4)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false},
         {label:'Max',data:data.map(()=>cfg.max),borderColor:'rgba(255,77,77,.4)',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false},
         {label:'Cible',data:data.map(()=>cfg.target),borderColor:'rgba(0,201,177,.3)',borderWidth:1,borderDash:[6,3],pointRadius:0,fill:false}
