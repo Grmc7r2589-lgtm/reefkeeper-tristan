@@ -599,7 +599,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
     <!-- HISTORIQUE -->
     <div class="pg" id="pg-history">
       <div class="pls" id="hfp">
-        <div class="pl active" onclick="setHF(7,this)">7 jours</div>
+        <div class="pl active" onclick="setHF(15,this)">15 jours</div>
         <div class="pl" onclick="setHF(30,this)">30 jours</div>
         <div class="pl" onclick="setHF(90,this)">90 jours</div>
         <div class="pl" onclick="setHF(365,this)">1 an</div>
@@ -1641,7 +1641,7 @@ async function saveSettings(){
   }catch(err){console.error(err)}
 }
 
-let histFilter=7, histView='chart', calcType='kh', histChart=null, currentPage='aquarium';
+let histFilter=15, histView='chart', calcType='kh', histChart=null, currentPage='aquarium';
 
 // ═══════════════════════════════════════════
 // BUBBLES
