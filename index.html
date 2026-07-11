@@ -945,7 +945,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 </div>
 
 <div class="mo" id="modal-action-sheet"><div class="mdl"><div class="mh"></div><div id="as-title" class="as-title"></div><div id="as-items"></div></div></div>
-<div class="mo" id="modal-species"><div class="mdl" id="species-detail-content"></div></div>
+<div class="mo" id="modal-species"><div class="mdl" id="species-detail-content" style="position:relative"></div></div>
 <div class="mo" id="modal-param-guidance">
   <div class="mdl" id="pgm-content"></div>
 </div>
@@ -3102,6 +3102,7 @@ function showSpeciesDetail(sci){
   const isAdopted=speciesDecisions[sp.sci]==='adopted';
   const c=document.getElementById('species-detail-content');
   c.innerHTML=`<div class="mh"></div>
+    <button type="button" onclick="closeModal('modal-species')" aria-label="Fermer" style="position:absolute;top:16px;right:14px;width:36px;height:36px;border-radius:50%;background:rgba(12,18,56,.72);border:.5px solid rgba(150,164,255,.35);color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;z-index:5;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">✕</button>
     ${sp.photo?`<div style="width:100%;height:190px;border-radius:18px;overflow:hidden;margin-bottom:14px"><img src="${escAttr(sp.photo)}" style="width:100%;height:100%;object-fit:cover"></div>`
               :`<div style="font-size:64px;text-align:center;margin-bottom:10px">${sp.emoji||'🐟'}</div>`}
     <div style="font-size:20px;font-weight:700">${escHtml(sp.name)}</div>
