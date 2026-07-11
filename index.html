@@ -1892,15 +1892,31 @@ function renderAquarium(){
   if(warns.length)ah+=`<div class="al a-warn" onclick='openParamGuidanceModal(${JSON.stringify(warns.map(([p])=>p))})' style="cursor:pointer"><span class="ai">⚠️</span><div><strong>${warns.length} à surveiller :</strong> ${warns.map(([p])=>PC[p].label).join(', ')}</div></div>`;
   document.getElementById('main-alerts').innerHTML=ah;
 
-  // Photo héros : la plus récente de la galerie, en bandeau au-dessus de tout.
+  // Héros : la photo de galerie si elle est fraîche (<7 j), sinon l'espèce
+  // du jour — rotation quotidienne déterministe sur les 102 du catalogue.
   const heroEl=document.getElementById('hero-photo');
   if(heroEl){
     const latest=[...gallery].sort((a,b)=>b.ts-a.ts)[0];
-    heroEl.innerHTML=latest?`
+    if(latest&&(Date.now()-latest.ts)<7*864e5){
+      heroEl.innerHTML=`
       <div onclick="nav('gallery')" style="position:relative;border-radius:var(--r);overflow:hidden;margin-bottom:11px;cursor:pointer;height:150px">
         <img src="${escAttr(latest.src)}" style="width:100%;height:100%;object-fit:cover;display:block">
         <div style="position:absolute;left:10px;bottom:10px;background:var(--yel);color:var(--yelT);font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px">📷 ${fage(latest.ts)}</div>
-      </div>`:'';
+      </div>`;
+    }else{
+      const allSp=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv];
+      const sp=allSp[Math.floor(Date.now()/864e5)%allSp.length];
+      heroEl.innerHTML=`
+      <div onclick="showSpeciesDetail('${escAttr(sp.sci)}')" style="position:relative;border-radius:var(--r);overflow:hidden;margin-bottom:11px;cursor:pointer;height:150px;background:var(--bg1)">
+        ${sp.photo?`<img src="${escAttr(sp.photo)}" style="width:100%;height:100%;object-fit:cover;display:block">`:`<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:56px">${sp.emoji||'🐟'}</div>`}
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(12,18,56,.85) 0%,transparent 55%)"></div>
+        <div style="position:absolute;left:12px;top:10px;background:var(--yel);color:var(--yelT);font-size:10.5px;font-weight:700;padding:4px 11px;border-radius:999px">✨ Espèce du jour</div>
+        <div style="position:absolute;left:12px;bottom:10px;right:12px">
+          <div style="font-size:16px;font-weight:700;color:#fff">${escHtml(sp.name)}</div>
+          <div style="font-size:11px;font-style:italic;color:var(--t2)">${escHtml(sp.sci)}</div>
+        </div>
+      </div>`;
+    }
   }
 
   // Bilan
