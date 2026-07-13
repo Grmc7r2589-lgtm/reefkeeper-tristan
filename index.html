@@ -1852,7 +1852,7 @@ function renderMenuTests(){
   function ti(params){return params.map(p=>{
     const m=l[p];const v=m?fv(p,m.value):null;
     const s=v!==null?gSt(p,v):'nd';
-    return`<div class="ti" onclick="closeMenu();openModal('modal-mesure');setTimeout(()=>{document.getElementById('ap').value='${p}';document.getElementById('av').focus()},100)">
+    return`<div class="ti" onclick="closeMenu();openModal('modal-mesure');setTimeout(()=>{document.getElementById('ap').value='${p}';toggleMeasurePhotoField();document.getElementById('av').focus()},100)">
       <div class="tdot" style="${dotC[s]}"></div>
       <div class="tname">${PC[p].label}</div>
       <div style="text-align:right"><div class="tval ${s}">${v!==null?v+' '+PC[p].unit:'—'}</div><div class="tdate">${m?fdate(m.ts):'Non mesuré'}</div></div>
@@ -1984,7 +1984,7 @@ function togDC(key,label,d){
 }
 function openDashboardParamActions(p){
   const l=getLatest();const m=l[p];
-  const actions=[{icon:'➕',label:'Nouveau relevé',fn:()=>{openModal('modal-mesure');setTimeout(()=>document.getElementById('ap').value=p,50)}}];
+  const actions=[{icon:'➕',label:'Nouveau relevé',fn:()=>{openModal('modal-mesure');setTimeout(()=>{document.getElementById('ap').value=p;toggleMeasurePhotoField();},50)}}];
   if(m){
     actions.push({icon:'✏️',label:'Modifier le dernier relevé',fn:()=>editMeasure(m.id)});
     actions.push({icon:'📊',label:"Voir l'historique",fn:()=>{nav('history');setTimeout(()=>{document.getElementById('hp').value=p;renderHistory()},50)}});
