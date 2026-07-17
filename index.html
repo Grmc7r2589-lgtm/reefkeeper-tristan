@@ -487,7 +487,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
     <div class="sm-hd" onclick="nav('aquarium')" style="cursor:pointer">
       <div class="sm-title">🐠 ReefKeeper Tristan</div>
       <div class="sm-sub">Reefer 300 XL G3 · Depuis le 8 juin 2026</div>
-      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v5.0</div>
+      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v5.1</div>
     </div>
     <div class="sm-body">
       <div class="sm-sec">Outils</div>
@@ -751,7 +751,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
         </label>
         <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
       </div>
-      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v5.0<br><span id="pwa-diag" style="font-size:9px"></span></div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v5.1<br><span id="pwa-diag" style="font-size:9px"></span></div>
     </div>
 
   </div><!-- /cnt -->
@@ -1346,12 +1346,18 @@ window.pwaDiag='';
     window.addEventListener('pageshow', pin);
   }
 })();
-window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v5.0 · '+window.pwaDiag;}});
+window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v5.1 · '+window.pwaDiag;}});
 // Service worker : rend l'app installable (PWA) et disponible hors ligne en lecture.
+// Héritage du mode PWA abandonné : on désenregistre activement le service
+// worker et on purge ses caches. C'est lui qui servait d'anciennes versions
+// après déploiement ("v4.9 fantôme") et ralentissait le premier chargement.
 if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('/sw.js').catch(err=>console.warn('SW non enregistré:', err));
-  });
+  navigator.serviceWorker.getRegistrations()
+    .then(regs=>regs.forEach(r=>r.unregister()))
+    .catch(()=>{});
+}
+if(window.caches){
+  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k))).catch(()=>{});
 }
 // Filet global : toute promesse rejetée non gérée (ex: réseau coupé pendant
 // un appel Supabase) affiche un message au lieu d'échouer en silence.
