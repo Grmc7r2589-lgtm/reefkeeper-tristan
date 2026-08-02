@@ -617,8 +617,10 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
         <div class="pl" onclick="setHF(365,this)">1 an</div>
       </div>
       <div class="seg"><div class="sb active" onclick="setHV('chart',this)">Graphique</div><div class="sb" onclick="setHV('table',this)">Tableau</div></div>
+      <button class="btn btn-g btn-sm" style="width:100%;margin-bottom:12px" onclick="copyAllMeasures()">📋 Copier tout l'historique (pour ChatGPT)</button>
       <div class="fd"><label>Paramètre</label>
         <select id="hp" onchange="renderHistory()">
+          <option value="cycle">🌀 Cycle (NH₃ / NO₂ / NO₃)</option>
           <option value="temp">Température</option><option value="sal">Salinité</option>
           <option value="ph">pH</option><option value="kh">KH</option>
           <option value="no3">NO₃</option><option value="no2">NO₂</option>
@@ -812,7 +814,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
       <div id="am-photo-preview" style="margin-top:7px"></div>
     </div>
     <button class="btn btn-o" onclick="guarded('addMeasure')" style="margin-bottom:8px">Enregistrer</button>
-    <button class="btn btn-g" onclick="closeModal('modal-mesure')" style="width:100%">Annuler</button>
+    <button class="btn btn-g" onclick="closeModal('modal-mesure')" style="width:100%">Fermer</button>
   </div>
 </div>
 
@@ -2084,14 +2086,26 @@ async function addMeasure(){
     toast('📤 Envoi de la photo...');
     photoUrl=await uploadPhoto(pendingMeasurePhoto,'measures');
   }
-  document.getElementById('av').value='';document.getElementById('ac').value='';
-  document.getElementById('am-photo-preview').innerHTML='';
-  pendingMeasurePhoto=null;
-  closeModal('modal-mesure');
   const {data,error}=await sb.from('measures').insert({owner_id:currentUser.id,param:p,value:v,comment,ts:new Date(ts).toISOString(),photo_url:photoUrl}).select().single();
   if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
   measures.push({id:data.id,param:p,value:v,ts,comment,photo:photoUrl});
-  renderAquarium();toast('✓ Mesure enregistrée');
+  renderAquarium();
+  // Saisie en chaîne : après un succès, le formulaire se vide et avance au
+  // paramètre suivant pour enchaîner toute la série de tests d'un trait.
+  // Au bout de la liste, il se ferme : série complète.
+  document.getElementById('av').value='';document.getElementById('ac').value='';
+  document.getElementById('am-photo-preview').innerHTML='';
+  pendingMeasurePhoto=null;
+  const sel=document.getElementById('ap');
+  if(sel.selectedIndex<sel.options.length-1){
+    sel.selectedIndex=sel.selectedIndex+1;
+    toggleMeasurePhotoField();
+    document.getElementById('av').focus();
+    toast('✓ Enregistré — au suivant : '+sel.options[sel.selectedIndex].text.replace(/ —.*/,''));
+  }else{
+    closeModal('modal-mesure');
+    toast('✓ Série de mesures terminée');
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -2099,9 +2113,79 @@ async function addMeasure(){
 // ═══════════════════════════════════════════
 function setHF(d,el){histFilter=d;document.querySelectorAll('#hfp .pl').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderHistory()}
 function setHV(v,el){histView=v;document.querySelectorAll('#pg-history .sb').forEach(b=>b.classList.remove('active'));el.classList.add('active');document.getElementById('hcw').style.display=v==='chart'?'':'none';document.getElementById('htw').style.display=v==='table'?'':'none';renderHistory()}
+// Export texte de TOUT l'historique, pensé pour être collé à une IA :
+// contexte du bac + plages cibles + relevés chronologiques avec jour de cycle.
+async function copyAllMeasures(){
+  if(!measures.length){toast('Aucune mesure à copier');return}
+  const start=new Date('2026-06-08').getTime();
+  const dayOf=ts=>Math.floor((ts-start)/86400000)+1;
+  let txt='Suivi aquarium récifal — Red Sea Reefer 300 XL G3 (300 L net), mise en eau le 08/06/2026 (aujourd\'hui : jour '+daysFromStart()+').\n';
+  txt+='Sel : Red Sea Salt. Bac en cyclage, aucun animal introduit.\n\n';
+  txt+='Plages cibles :\n';
+  for(const p in PC){const c=PC[p];txt+='- '+c.label+' : cible '+c.target+(c.unit?' '+c.unit:'')+' (plage '+c.min+'–'+c.max+')\n';}
+  txt+='\nRelevés (chronologique, J = jour depuis la mise en eau) :\n';
+  [...measures].sort((a,b)=>a.ts-b.ts).forEach(m=>{
+    const c=PC[m.param];
+    txt+='J'+dayOf(m.ts)+' ('+new Date(m.ts).toLocaleDateString('fr-FR')+' '+new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+') · '+c.label+' : '+fv(m.param,m.value)+(c.unit?' '+c.unit:'')+(m.comment?' — '+m.comment:'')+'\n';
+  });
+  txt+='\nQuestion : où en est mon cyclage et que me conseilles-tu pour la suite ?';
+  try{
+    await navigator.clipboard.writeText(txt);
+    toast('📋 Copié — colle-le dans ChatGPT');
+  }catch(e){
+    // Repli si l'API presse-papiers est refusée (vieux navigateurs / http)
+    const ta=document.createElement('textarea');
+    ta.value=txt;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');toast('📋 Copié — colle-le dans ChatGPT');}
+    catch(e2){toast('⚠️ Copie impossible sur ce navigateur');}
+    ta.remove();
+  }
+}
+
 function renderHistory(){
   const param=document.getElementById('hp').value;
   const cutoff=Date.now()-histFilter*86400000;
+
+  // Vue « Cycle » : NH₃ / NO₂ / NO₃ superposés — la lecture du cyclage.
+  if(param==='cycle'){
+    const CP=[['nh3','#ff5d6c'],['no2','#f5a623'],['no3','#00c9b1']];
+    const byP={};
+    CP.forEach(([p])=>byP[p]=measures.filter(m=>m.param===p&&m.ts>=cutoff).sort((a,b)=>a.ts-b.ts));
+    if(histView==='chart'){
+      // Axe commun : l'union des jours où au moins un des trois a été mesuré.
+      const dayKey=ts=>new Date(ts).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+      const days=[...new Set([].concat(...CP.map(([p])=>byP[p].map(m=>m.ts))))].sort((a,b)=>a-b).map(dayKey);
+      const labels=[...new Set(days)];
+      const ctx=document.getElementById('hch').getContext('2d');
+      if(histChart)histChart.destroy();
+      histChart=new Chart(ctx,{type:'line',data:{
+        labels,
+        datasets:CP.map(([p,color])=>({
+          label:PC[p].label,
+          data:labels.map(lb=>{const m=[...byP[p]].reverse().find(x=>dayKey(x.ts)===lb);return m?m.value:null}),
+          borderColor:color,backgroundColor:'transparent',borderWidth:2.5,pointRadius:4,
+          pointBackgroundColor:color,tension:.35,spanGaps:true
+        }))
+      },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#aab4ea',font:{size:11},boxWidth:14}}},scales:{x:{ticks:{color:'#3a6a8a',font:{size:11}},grid:{color:'rgba(255,255,255,.03)'}},y:{beginAtZero:true,ticks:{color:'#3a6a8a',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'}}}}});
+      const chartList=document.getElementById('hch-list');
+      if(chartList)chartList.innerHTML='';
+    }else{
+      const sl={ok:'OK',warn:'Vigilance',danger:'Hors plage'};
+      const sc={ok:'var(--teal)',warn:'var(--amber)',danger:'var(--red)'};
+      const all=[].concat(...CP.map(([p])=>byP[p])).sort((a,b)=>b.ts-a.ts);
+      document.getElementById('htb').innerHTML=all.map(m=>{
+        const s=gSt(m.param,m.value);
+        return`<tr onclick="openMeasureActions('${m.id}')" style="border-bottom:.5px solid rgba(150,164,255,.06);cursor:pointer">
+          <td style="padding:8px 6px;color:var(--t3)">${new Date(m.ts).toLocaleDateString('fr-FR')}</td>
+          <td style="padding:8px 6px;font-weight:600">${PC[m.param].label} · ${fv(m.param,m.value)} ${PC[m.param].unit}${m.photo?' 📷':''}</td>
+          <td style="padding:8px 6px"><span style="padding:2px 8px;border-radius:20px;font-size:11px;background:${s==='ok'?'var(--td)':s==='warn'?'var(--ad)':'var(--rd)'};color:${sc[s]}">${sl[s]}</span></td>
+          <td style="padding:8px 4px;text-align:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;font-size:18px;color:var(--t3)">⋮</span></td>
+        </tr>`;
+      }).join('');
+    }
+    return;
+  }
+
   const data=measures.filter(m=>m.param===param&&m.ts>=cutoff).sort((a,b)=>a.ts-b.ts);
   const cfg=PC[param];
   if(histView==='chart'){
