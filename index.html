@@ -2168,7 +2168,25 @@ function renderHistory(){
         }))
       },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#aab4ea',font:{size:11},boxWidth:14}}},scales:{x:{ticks:{color:'#3a6a8a',font:{size:11}},grid:{color:'rgba(255,255,255,.03)'}},y:{beginAtZero:true,ticks:{color:'#3a6a8a',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'}}}}});
       const chartList=document.getElementById('hch-list');
-      if(chartList)chartList.innerHTML='';
+      if(chartList){
+        // Verdict automatique : la lecture du cycle à partir des derniers relevés.
+        const lt=getLatest();
+        let verdict,vc;
+        if(!lt.nh3||!lt.no2||!lt.no3){
+          verdict='Mesure NH₃, NO₂ et NO₃ pour que je puisse juger l\'état du cycle.';vc='var(--t3)';
+        }else if(lt.nh3.value<=PC.nh3.max&&lt.no2.value<=PC.no2.max&&lt.no3.value>=1){
+          verdict='✅ Signature d\'un cycle terminé : ammoniac et nitrites à zéro, nitrates présents (produit final). Le bac est biologiquement prêt.';vc='var(--teal)';
+        }else if(lt.no2.value>PC.no2.max&&lt.nh3.value<=PC.nh3.max){
+          verdict='⏳ Phase nitrites en cours : l\'ammoniac est consommé mais NO₂ est encore à '+fv('no2',lt.no2.value)+' mg/L. Patience, c\'est la dernière étape.';vc='var(--amber)';
+        }else if(lt.nh3.value>PC.nh3.max){
+          verdict='⏳ Phase ammoniac : NH₃ encore à '+fv('nh3',lt.nh3.value)+' mg/L, les bactéries se mettent en place.';vc='var(--amber)';
+        }else{
+          verdict='Cycle en cours — continue les relevés hebdomadaires pour suivre l\'évolution.';vc='var(--t2)';
+        }
+        chartList.innerHTML=`
+          <div style="font-size:12.5px;line-height:1.55;color:${vc};background:rgba(150,164,255,.06);border-radius:var(--rs);padding:11px 13px;margin-top:12px;font-weight:600">${verdict}</div>
+          <div style="font-size:11px;color:var(--t3);line-height:1.5;margin-top:8px">Lecture : le cyclage suit toujours la même histoire — montée de NH₃, puis vague de NO₂, puis les deux s'effondrent pendant que NO₃ s'installe. Passe le filtre sur 90 jours ou 1 an pour voir la fresque complète.</div>`;
+      }
     }else{
       const sl={ok:'OK',warn:'Vigilance',danger:'Hors plage'};
       const sc={ok:'var(--teal)',warn:'var(--amber)',danger:'var(--red)'};
