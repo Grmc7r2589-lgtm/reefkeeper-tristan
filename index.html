@@ -51,11 +51,13 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 /* Téléphone : site classique. L'app suit le flux de la page, sa hauteur
    s'étire avec le contenu, et c'est Safari qui gère le défilement. */
 @media(max-width:767px){
-  #app{position:relative;height:auto;min-height:100dvh;max-width:none;margin:0}
+  #app{position:relative;height:auto;min-height:100dvh;max-width:none;margin:0;padding-bottom:calc(var(--tbh) + var(--sb) + 8px)}
   .hdr{position:sticky;top:0}
-  /* z-index requis : les cartes de swipe empilées ont un z-index explicite,
-     sans lui la barre passerait dessous. */
-  .tbr{position:sticky;bottom:0;z-index:50}
+  /* position:fixed plutôt que sticky : sur Safari iOS, la barre d'outils du
+     navigateur se déploie/rétracte au scroll et masque un élément sticky
+     pendant la manœuvre. fixed reste ancré au bord visible de l'écran.
+     Le z-index reste requis face aux cartes de swipe empilées. */
+  .tbr{position:fixed;bottom:0;left:0;right:0;z-index:50}
   .cnt{overflow:visible;flex:none}
 }
 @media(min-width:768px){#app{max-width:760px;box-shadow:0 0 100px rgba(0,0,0,.8)}body{background:#01040a;display:flex;flex-direction:row;align-items:center;justify-content:center;width:100vw;height:100vh}}
@@ -831,6 +833,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
     <div class="fd"><label>Nom commun</label><input type="text" id="an-name" placeholder="Ex : Clown Maroon"></div>
     <div class="fd"><label>Nom scientifique</label><input type="text" id="an-sci" placeholder="Ex : Premnas biaculeatus"></div>
     <div class="fd"><label>Emoji</label><input type="text" id="an-emoji" placeholder="🐟" maxlength="4" style="font-size:20px;text-align:center"></div>
+    <div class="fd"><label>Nombre d'individus</label><input type="number" id="an-qty" value="1" min="1" step="1" inputmode="numeric"></div>
     <div class="fd"><label>Date d'introduction</label><input type="date" id="an-date"></div>
     <div class="fd"><label>Notes</label><textarea id="an-notes" placeholder="Comportement, emplacement..."></textarea></div>
     <div class="fd"><label>Photo personnelle (optionnel)</label>
@@ -1671,7 +1674,7 @@ async function loadAllData(){
     ]);
     if(mR.error) throw mR.error;
     measures = (mR.data||[]).map(m=>({id:m.id,param:m.param,value:parseFloat(m.value),ts:new Date(m.ts).getTime(),comment:m.comment||'',photo:m.photo_url||''}));
-    animals  = (aR.data||[]).map(a=>({id:a.id,cat:a.cat,status:a.status,name:a.name,sci:a.sci||'',emoji:a.emoji||'🐟',photo:a.photo_url||'',date:a.date||'',notes:a.notes||''}));
+    animals  = (aR.data||[]).map(a=>({id:a.id,cat:a.cat,status:a.status,name:a.name,sci:a.sci||'',emoji:a.emoji||'🐟',photo:a.photo_url||'',date:a.date||'',notes:a.notes||'',qty:a.qty||1}));
     corals   = (cR.data||[]).map(c=>({id:c.id,status:c.status,name:c.name,type:c.type,emoji:c.emoji||'🪸',photo:c.photo_url||'',location:c.location||'',notes:c.notes||''}));
     journal  = (jR.data||[]).map(j=>({id:j.id,date:j.entry_date,title:j.title,cat:j.category,note:j.note||'',photo:j.photo_url||''}));
     equipment= (eR.data||[]).map(e=>({id:e.id,emoji:e.emoji||'⚙️',name:e.name,detail:e.detail||'',price:parseFloat(e.price)||0,date:e.purchase_date||'',warranty:e.warranty_months||0}));
@@ -1931,7 +1934,7 @@ function renderAquarium(){
   const tank=animals.filter(a=>a.status==='tank');
   document.getElementById('bilan-top').innerHTML=`
     <div class="bx"><div class="bv t">${days}j</div><div class="bl">En marche</div></div>
-    <div class="bx"><div class="bv b">${tank.length}</div><div class="bl">Animaux</div></div>
+    <div class="bx"><div class="bv b">${tank.reduce((s,a)=>s+(a.qty||1),0)}</div><div class="bl">Animaux</div></div>
     <div class="bx"><div class="bv a">${measures.length}</div><div class="bl">Relevés</div></div>`;
 
   // Bac encore vide : message encourageant calculé sur la maturité requise
@@ -2324,9 +2327,10 @@ function renderPop(){
   const tank=animals.filter(a=>a.status==='tank');
   const plan=animals.filter(a=>a.status==='planned');
   const dead=animals.filter(a=>a.status==='dead');
-  document.getElementById('cf').textContent=tank.filter(a=>a.cat==='fish').length;
-  document.getElementById('ci').textContent=tank.filter(a=>a.cat==='inv').length;
-  document.getElementById('cp').textContent=plan.length;
+  const nQ=arr=>arr.reduce((s,a)=>s+(a.qty||1),0);
+  document.getElementById('cf').textContent=nQ(tank.filter(a=>a.cat==='fish'));
+  document.getElementById('ci').textContent=nQ(tank.filter(a=>a.cat==='inv'));
+  document.getElementById('cp').textContent=nQ(plan);
   const allSpecies=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv];
   const aH=arr=>arr.length?arr.map(a=>{
     // Priorité : photo personnelle uploadée > photo catalogue de l'espèce > emoji
@@ -2339,7 +2343,7 @@ function renderPop(){
     <div class="cc" onclick="openCreature('${a.id}')">
       <div class="ca ${a.status==='tank'?'it':a.status==='dead'?'pl':'pl'}">${imgSrc?`<img src="${imgSrc}">`:(a.emoji||'🐟')}</div>
       <div class="ci">
-        <div class="cn">${escHtml(a.name)}</div>
+        <div class="cn">${escHtml(a.name)}${(a.qty||1)>1?` <span style="font-size:12px;font-weight:700;color:var(--yel);background:rgba(77,227,255,.12);padding:1px 8px;border-radius:999px;vertical-align:middle">×${a.qty}</span>`:''}</div>
         <div class="cs">${escHtml(a.sci)}</div>
         ${a.date?`<div class="cm">Introduit le ${new Date(a.date+'T00:00:00').toLocaleDateString('fr-FR')}</div>`:''}
         <span class="cbadge ${a.status==='tank'?'b-it':a.status==='dead'?'b-de':'b-pl'}">${a.status==='tank'?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
@@ -2378,7 +2382,7 @@ function openCreature(id){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       ${!imgSrc?`<div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,var(--bg2),var(--bg3));display:flex;align-items:center;justify-content:center;font-size:28px;border:.5px solid rgba(0,201,177,.3);overflow:hidden;flex-shrink:0">${a.emoji||'🐟'}</div>`:''}
       <div>
-        <div style="font-size:18px;font-weight:700">${escHtml(a.name)}</div>
+        <div style="font-size:18px;font-weight:700">${escHtml(a.name)}${(a.qty||1)>1?` <span style="font-size:13px;color:var(--yel)">×${a.qty}</span>`:''}</div>
         <div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:2px">${escHtml(a.sci)}</div>
         <span class="cbadge ${inTank?'b-it':a.status==='dead'?'b-de':'b-pl'}" style="margin-top:4px">${inTank?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
         ${(()=>{const sp=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv].find(s=>s.sci===a.sci);return sp?`<div style="margin-top:6px">${priceLabelHTML(sp.price??null)}</div>`:''})()}
@@ -2426,6 +2430,7 @@ function editAnimal(id){
   document.getElementById('an-sci').value=a.sci||'';
   document.getElementById('an-emoji').value=a.emoji||'';
   document.getElementById('an-date').value=a.date||'';
+  document.getElementById('an-qty').value=a.qty||1;
   document.getElementById('an-notes').value=a.notes||'';
   document.getElementById('an-photo').value=a.photo||'';
   document.getElementById('an-photo-preview').innerHTML=a.photo?`<img src="${a.photo}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`:'';
@@ -2510,7 +2515,7 @@ async function saveAnimal(){
     toast('📤 Envoi de la photo...');
     const up=await uploadPhoto(pendingAnPhoto,'animals');if(up)photoUrl=up;else if(photoUrl)toast('⚠️ Ancienne photo conservée');
   }
-  const data={cat:document.getElementById('an-cat').value,status:document.getElementById('an-status').value,name,sci:document.getElementById('an-sci').value.trim(),emoji:document.getElementById('an-emoji').value||'🐟',date:document.getElementById('an-date').value||null,notes:document.getElementById('an-notes').value.trim(),photo_url:photoUrl};
+  const data={cat:document.getElementById('an-cat').value,status:document.getElementById('an-status').value,name,sci:document.getElementById('an-sci').value.trim(),emoji:document.getElementById('an-emoji').value||'🐟',date:document.getElementById('an-date').value||null,notes:document.getElementById('an-notes').value.trim(),photo_url:photoUrl,qty:Math.max(1,parseInt(document.getElementById('an-qty').value)||1)};
   if(id){
     const {error}=await sb.from('animals').update(data).eq('id',id);
     if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
@@ -2518,11 +2523,12 @@ async function saveAnimal(){
   }else{
     const {data:inserted,error}=await sb.from('animals').insert({owner_id:currentUser.id,...data}).select().single();
     if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
-    animals.push({id:inserted.id,cat:data.cat,status:data.status,name,sci:data.sci,emoji:data.emoji,photo:photoUrl,date:data.date||'',notes:data.notes});
+    animals.push({id:inserted.id,cat:data.cat,status:data.status,name,sci:data.sci,emoji:data.emoji,photo:photoUrl,date:data.date||'',notes:data.notes,qty:data.qty});
   }
   pendingAnPhoto=null;
   closeModal('modal-animal');
   ['an-name','an-sci','an-emoji','an-notes','an-photo'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('an-qty').value='1';
   clearSpeciesSearch('animal');
   document.getElementById('an-id').value='';
   document.getElementById('an-photo-preview').innerHTML='';
