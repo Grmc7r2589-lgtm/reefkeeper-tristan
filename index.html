@@ -714,7 +714,8 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
     <!-- ÉQUIPEMENT -->
     <div class="pg" id="pg-equipment">
       <div class="bg3">
-        <div class="bx"><div class="bv t" id="eq-tot">—</div><div class="bl">Total investi</div></div>
+        <div class="bx"><div class="bv t" id="eq-tot">—</div><div class="bl">Matériel</div></div>
+        <div class="bx"><div class="bv a" id="eq-pop">—</div><div class="bl">Vivant</div></div>
         <div class="bx"><div class="bv b" id="eq-nb">0</div><div class="bl">Équipements</div></div>
         <div class="bx"><div class="bv g">✓</div><div class="bl">Opérationnel</div></div>
       </div>
@@ -834,6 +835,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
     <div class="fd"><label>Nom scientifique</label><input type="text" id="an-sci" placeholder="Ex : Premnas biaculeatus"></div>
     <div class="fd"><label>Emoji</label><input type="text" id="an-emoji" placeholder="🐟" maxlength="4" style="font-size:20px;text-align:center"></div>
     <div class="fd"><label>Nombre d'individus</label><input type="number" id="an-qty" value="1" min="1" step="1" inputmode="numeric"></div>
+    <div class="fd"><label>Prix payé (€) — total de la fiche, optionnel</label><input type="number" id="an-price" placeholder="Ex : 46.61" step="0.01" inputmode="decimal"></div>
     <div class="fd"><label>Date d'introduction</label><input type="date" id="an-date"></div>
     <div class="fd"><label>Notes</label><textarea id="an-notes" placeholder="Comportement, emplacement..."></textarea></div>
     <div class="fd"><label>Photo personnelle (optionnel)</label>
@@ -862,6 +864,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
     <div class="fd"><label>Nom</label><input type="text" id="co-name" placeholder="Ex : Chalice Ultra Sherbert"></div>
     <div class="fd"><label>Type</label><select id="co-type"><option value="lps">LPS — Grand polype</option><option value="sps">SPS — Petit polype</option><option value="soft">Corail mou</option><option value="nem">Anémone</option><option value="autre">Autre</option></select></div>
     <div class="fd"><label>Emoji</label><input type="text" id="co-emoji" placeholder="🪸" maxlength="4" style="font-size:20px;text-align:center"></div>
+    <div class="fd"><label>Prix payé (€) — optionnel</label><input type="number" id="co-price" placeholder="Ex : 39.90" step="0.01" inputmode="decimal"></div>
     <div class="fd"><label>Emplacement</label><input type="text" id="co-location" placeholder="Ex : milieu, ombre partielle"></div>
     <div class="fd"><label>Notes</label><textarea id="co-notes" placeholder="Couleur, croissance, comportement..."></textarea></div>
     <div class="fd"><label>Photo personnelle (optionnel)</label>
@@ -1674,8 +1677,8 @@ async function loadAllData(){
     ]);
     if(mR.error) throw mR.error;
     measures = (mR.data||[]).map(m=>({id:m.id,param:m.param,value:parseFloat(m.value),ts:new Date(m.ts).getTime(),comment:m.comment||'',photo:m.photo_url||''}));
-    animals  = (aR.data||[]).map(a=>({id:a.id,cat:a.cat,status:a.status,name:a.name,sci:a.sci||'',emoji:a.emoji||'🐟',photo:a.photo_url||'',date:a.date||'',notes:a.notes||'',qty:a.qty||1}));
-    corals   = (cR.data||[]).map(c=>({id:c.id,status:c.status,name:c.name,type:c.type,emoji:c.emoji||'🪸',photo:c.photo_url||'',location:c.location||'',notes:c.notes||''}));
+    animals  = (aR.data||[]).map(a=>({id:a.id,cat:a.cat,status:a.status,name:a.name,sci:a.sci||'',emoji:a.emoji||'🐟',photo:a.photo_url||'',date:a.date||'',notes:a.notes||'',qty:a.qty||1,price:a.price??null}));
+    corals   = (cR.data||[]).map(c=>({id:c.id,status:c.status,name:c.name,type:c.type,emoji:c.emoji||'🪸',photo:c.photo_url||'',location:c.location||'',notes:c.notes||'',price:c.price??null}));
     journal  = (jR.data||[]).map(j=>({id:j.id,date:j.entry_date,title:j.title,cat:j.category,note:j.note||'',photo:j.photo_url||''}));
     equipment= (eR.data||[]).map(e=>({id:e.id,emoji:e.emoji||'⚙️',name:e.name,detail:e.detail||'',price:parseFloat(e.price)||0,date:e.purchase_date||'',warranty:e.warranty_months||0}));
     gallery  = (gR.data||[]).map(p=>({id:p.id,src:p.photo_url,ts:new Date(p.taken_at).getTime(),name:p.caption||''}));
@@ -2386,6 +2389,7 @@ function openCreature(id){
         <div style="font-size:12px;color:var(--t3);font-style:italic;margin-top:2px">${escHtml(a.sci)}</div>
         <span class="cbadge ${inTank?'b-it':a.status==='dead'?'b-de':'b-pl'}" style="margin-top:4px">${inTank?'✅ Dans le bac':a.status==='dead'?'💀 Décédé':'⏳ Prévu'}</span>
         ${(()=>{const sp=[...SPECIES_DB.fish,...SPECIES_DB.coral,...SPECIES_DB.inv].find(s=>s.sci===a.sci);return sp?`<div style="margin-top:6px">${priceLabelHTML(sp.price??null)}</div>`:''})()}
+        ${a.price>0?`<div style="font-size:12px;color:var(--t2);margin-top:4px">💶 Payé : <strong>${(+a.price).toFixed(2).replace('.',',')} €</strong></div>`:''}
       </div>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
@@ -2431,6 +2435,7 @@ function editAnimal(id){
   document.getElementById('an-emoji').value=a.emoji||'';
   document.getElementById('an-date').value=a.date||'';
   document.getElementById('an-qty').value=a.qty||1;
+  document.getElementById('an-price').value=a.price??'';
   document.getElementById('an-notes').value=a.notes||'';
   document.getElementById('an-photo').value=a.photo||'';
   document.getElementById('an-photo-preview').innerHTML=a.photo?`<img src="${a.photo}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`:'';
@@ -2515,13 +2520,27 @@ async function saveAnimal(){
     toast('📤 Envoi de la photo...');
     const up=await uploadPhoto(pendingAnPhoto,'animals');if(up)photoUrl=up;else if(photoUrl)toast('⚠️ Ancienne photo conservée');
   }
-  const data={cat:document.getElementById('an-cat').value,status:document.getElementById('an-status').value,name,sci:document.getElementById('an-sci').value.trim(),emoji:document.getElementById('an-emoji').value||'🐟',date:document.getElementById('an-date').value||null,notes:document.getElementById('an-notes').value.trim(),photo_url:photoUrl,qty:Math.max(1,parseInt(document.getElementById('an-qty').value)||1)};
+  const data={cat:document.getElementById('an-cat').value,status:document.getElementById('an-status').value,name,sci:document.getElementById('an-sci').value.trim(),emoji:document.getElementById('an-emoji').value||'🐟',date:document.getElementById('an-date').value||null,notes:document.getElementById('an-notes').value.trim(),photo_url:photoUrl,qty:Math.max(1,parseInt(document.getElementById('an-qty').value)||1),price:(v=>isNaN(v)?null:v)(parseFloat(document.getElementById('an-price').value))};
+  // Repli : si la colonne qty n'existe pas encore côté Supabase, on
+  // réessaie sans elle pour ne jamais bloquer l'enregistrement, et on
+  // signale la marche à suivre (SQL d'une ligne dans Réglages Supabase).
+  const qtyMissing=err=>err&&/qty|price/i.test(err.message||'');
   if(id){
-    const {error}=await sb.from('animals').update(data).eq('id',id);
+    let {error}=await sb.from('animals').update(data).eq('id',id);
+    if(qtyMissing(error)){
+      const {qty,price,...noQty}=data;
+      ({error}=await sb.from('animals').update(noQty).eq('id',id));
+      if(!error)toast('⚠️ Nombre/prix non stockés — colonnes à créer dans Supabase');
+    }
     if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
     const a=animals.find(x=>x.id==id);if(a)Object.assign(a,{...data,photo:photoUrl});
   }else{
-    const {data:inserted,error}=await sb.from('animals').insert({owner_id:currentUser.id,...data}).select().single();
+    let {data:inserted,error}=await sb.from('animals').insert({owner_id:currentUser.id,...data}).select().single();
+    if(qtyMissing(error)){
+      const {qty,price,...noQty}=data;
+      ({data:inserted,error}=await sb.from('animals').insert({owner_id:currentUser.id,...noQty}).select().single());
+      if(!error)toast('⚠️ Nombre/prix non stockés — colonnes à créer dans Supabase');
+    }
     if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
     animals.push({id:inserted.id,cat:data.cat,status:data.status,name,sci:data.sci,emoji:data.emoji,photo:photoUrl,date:data.date||'',notes:data.notes,qty:data.qty});
   }
@@ -2529,6 +2548,7 @@ async function saveAnimal(){
   closeModal('modal-animal');
   ['an-name','an-sci','an-emoji','an-notes','an-photo'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('an-qty').value='1';
+  document.getElementById('an-price').value='';
   clearSpeciesSearch('animal');
   document.getElementById('an-id').value='';
   document.getElementById('an-photo-preview').innerHTML='';
@@ -2562,6 +2582,7 @@ function openCoral(id){
         <div style="font-size:18px;font-weight:700">${escHtml(c.name)}</div>
         <div style="font-size:12px;color:var(--teal);font-weight:600;margin-top:2px">${tl[c.type]||c.type}</div>
         <span class="cbadge ${inTank?'b-it':'b-pl'}" style="margin-top:4px">${inTank?'✅ Dans le bac':'⏳ Prévu'}</span>
+        ${c.price>0?`<div style="font-size:12px;color:var(--t2);margin-top:4px">💶 Payé : <strong>${(+c.price).toFixed(2).replace('.',',')} €</strong></div>`:''}
         ${(()=>{const all=[...SPECIES_DB.coral,...SPECIES_DB.inv,...SPECIES_DB.fish];const sp=all.find(s=>matchCoralName(s.name,c.name));return sp?`<div style="margin-top:6px">${priceLabelHTML(sp.price??null)}</div>`:''})()}
       </div>
     </div>
@@ -2606,6 +2627,7 @@ function editCoral(id){
   document.getElementById('co-emoji').value=c.emoji||'';
   document.getElementById('co-location').value=c.location||'';
   document.getElementById('co-notes').value=c.notes||'';
+  document.getElementById('co-price').value=c.price??'';
   document.getElementById('co-photo').value=c.photo||'';
   document.getElementById('co-photo-preview').innerHTML=c.photo?`<img src="${c.photo}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`:'';
   closeModal('modal-creature');clearSpeciesSearch('coral');openModal('modal-coral');
@@ -2631,19 +2653,32 @@ async function saveCoral(){
     toast('📤 Envoi de la photo...');
     const up=await uploadPhoto(pendingCoPhoto,'corals');if(up)photoUrl=up;else if(photoUrl)toast('⚠️ Ancienne photo conservée');
   }
-  const data={status:document.getElementById('co-status').value,name,type:document.getElementById('co-type').value,emoji:document.getElementById('co-emoji').value||'🪸',location:document.getElementById('co-location').value.trim(),notes:document.getElementById('co-notes').value.trim(),photo_url:photoUrl};
+  const data={status:document.getElementById('co-status').value,name,type:document.getElementById('co-type').value,emoji:document.getElementById('co-emoji').value||'🪸',location:document.getElementById('co-location').value.trim(),notes:document.getElementById('co-notes').value.trim(),photo_url:photoUrl,price:(v=>isNaN(v)?null:v)(parseFloat(document.getElementById('co-price').value))};
+  // Repli identique à saveAnimal : si la colonne price n'existe pas encore
+  // côté Supabase, on réessaie sans elle pour ne jamais bloquer.
+  const colMissing=err=>err&&/price/i.test(err.message||'');
   if(id){
-    const {error}=await sb.from('corals').update(data).eq('id',id);
+    let {error}=await sb.from('corals').update(data).eq('id',id);
+    if(colMissing(error)){
+      const {price,...noP}=data;
+      ({error}=await sb.from('corals').update(noP).eq('id',id));
+      if(!error)toast('⚠️ Prix non stocké — colonne price à créer dans Supabase');
+    }
     if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
     const c=corals.find(x=>x.id==id);if(c)Object.assign(c,{...data,photo:photoUrl});
   }else{
-    const {data:inserted,error}=await sb.from('corals').insert({owner_id:currentUser.id,...data}).select().single();
+    let {data:inserted,error}=await sb.from('corals').insert({owner_id:currentUser.id,...data}).select().single();
+    if(colMissing(error)){
+      const {price,...noP}=data;
+      ({data:inserted,error}=await sb.from('corals').insert({owner_id:currentUser.id,...noP}).select().single());
+      if(!error)toast('⚠️ Prix non stocké — colonne price à créer dans Supabase');
+    }
     if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
-    corals.push({id:inserted.id,status:data.status,name,type:data.type,emoji:data.emoji,photo:photoUrl,location:data.location,notes:data.notes});
+    corals.push({id:inserted.id,status:data.status,name,type:data.type,emoji:data.emoji,photo:photoUrl,location:data.location,notes:data.notes,price:data.price});
   }
   pendingCoPhoto=null;
   closeModal('modal-coral');
-  ['co-name','co-emoji','co-location','co-notes','co-photo'].forEach(x=>document.getElementById(x).value='');
+  ['co-name','co-emoji','co-location','co-notes','co-photo','co-price'].forEach(x=>document.getElementById(x).value='');
   clearSpeciesSearch('coral');
   document.getElementById('co-id').value='';
   document.getElementById('co-photo-preview').innerHTML='';
@@ -3437,6 +3472,10 @@ function calcWater(){
 function renderEquipment(){
   const tot=equipment.reduce((s,e)=>s+(parseFloat(e.price)||0),0);
   document.getElementById('eq-tot').textContent=Math.round(tot).toLocaleString('fr-FR')+'€';
+  // Valeur du vivant : somme des prix payés renseignés sur les fiches
+  // animaux et coraux (tous statuts — c'est de l'argent investi).
+  const pop=[...animals,...corals].reduce((s,x)=>s+(parseFloat(x.price)||0),0);
+  document.getElementById('eq-pop').textContent=Math.round(pop).toLocaleString('fr-FR')+'€';
   document.getElementById('eq-nb').textContent=equipment.length;
   const now=Date.now();
   document.getElementById('equip-list').innerHTML=equipment.map(e=>{
