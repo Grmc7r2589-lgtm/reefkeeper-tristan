@@ -489,7 +489,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
     <div class="sm-hd" onclick="nav('aquarium')" style="cursor:pointer">
       <div class="sm-title">🐠 ReefKeeper Tristan</div>
       <div class="sm-sub">Reefer 300 XL G3 · Depuis le 8 juin 2026</div>
-      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v5.1</div>
+      <div id="pwa-diag-top" style="font-size:9px;color:var(--t4);margin-top:4px">v5.2</div>
     </div>
     <div class="sm-body">
       <div class="sm-sec">Outils</div>
@@ -756,7 +756,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
         </label>
         <button class="btn btn-r" style="width:100%" onclick="confirmFullReset()">Réinitialiser</button>
       </div>
-      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v5.1<br><span id="pwa-diag" style="font-size:9px"></span></div>
+      <div style="text-align:center;padding:18px;font-size:11px;color:var(--t4)">ReefKeeper Tristan v5.2<br><span id="pwa-diag" style="font-size:9px"></span></div>
     </div>
 
   </div><!-- /cnt -->
@@ -1354,7 +1354,7 @@ window.pwaDiag='';
     window.addEventListener('pageshow', pin);
   }
 })();
-window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v5.1 · '+window.pwaDiag;}});
+window.addEventListener('DOMContentLoaded',()=>{for(const id of ['pwa-diag','pwa-diag-top']){const d=document.getElementById(id);if(d)d.textContent='v5.2 · '+window.pwaDiag;}});
 // Service worker : rend l'app installable (PWA) et disponible hors ligne en lecture.
 // Héritage du mode PWA abandonné : on désenregistre activement le service
 // worker et on purge ses caches. C'est lui qui servait d'anciennes versions
@@ -1788,9 +1788,11 @@ function getGuidance(){
     return {emoji:ph.emoji,label:ph.label,desc:ph.desc,tips:ph.tips,color:ph.color,border:ph.border,sub:`Jour ${days} depuis la mise en eau`};
   }
 
-  // Ancienneté du dernier ajout (les fiches sans date comptent comme anciennes).
-  const lastAdd=tank.map(a=>a.date?new Date(a.date+'T00:00:00').getTime():0).reduce((m,t)=>Math.max(m,t),0);
-  const sinceAdd=lastAdd?Math.floor((Date.now()-lastAdd)/864e5):999;
+  // Ancienneté du dernier ajout. Une seule date malformée rendrait Math.max
+  // égal à NaN et masquerait tous les ajouts récents : on les filtre.
+  const addDates=tank.map(a=>a.date?new Date(a.date+'T00:00:00').getTime():NaN).filter(t=>!isNaN(t));
+  const lastAdd=addDates.length?Math.max(...addDates):0;
+  const sinceAdd=lastAdd?Math.max(0,Math.floor((Date.now()-lastAdd)/864e5)):999;
 
   // 1) Les tout premiers jours : la charge biologique vient de bondir.
   if(sinceAdd<=4){
@@ -3479,12 +3481,16 @@ async function addAdoptedSpecies(sp){
     const coralType = sp.subtype || 'autre';
     const data={status:'planned',name:sp.name,type:coralType,emoji:sp.emoji,location:'',notes:sp.tips,photo_url:''};
     const {data:inserted,error}=await sb.from('corals').insert({owner_id:currentUser.id,...data}).select().single();
-    if(!error){ corals.push({id:inserted.id,status:'planned',name:sp.name,type:coralType,emoji:sp.emoji,photo:'',location:'',notes:sp.tips}); toast(`🪸 ${sp.name} ajouté à tes souhaits !`); }
+    if(error){console.error(error);toast('⚠️ Échec de l\'ajout aux souhaits');return}
+    corals.push({id:inserted.id,status:'planned',name:sp.name,type:coralType,emoji:sp.emoji,photo:'',location:'',notes:sp.tips,price:null});
+    toast(`🪸 ${sp.name} ajouté à tes souhaits !`);
   }else{
     const cat = SPECIES_DB.inv.includes(sp) ? 'inv' : 'fish';
     const data={cat,status:'planned',name:sp.name,sci:sp.sci,emoji:sp.emoji,date:null,notes:sp.tips,photo_url:''};
     const {data:inserted,error}=await sb.from('animals').insert({owner_id:currentUser.id,...data}).select().single();
-    if(!error){ animals.push({id:inserted.id,cat,status:'planned',name:sp.name,sci:sp.sci,emoji:sp.emoji,photo:'',date:'',notes:sp.tips}); toast(`✅ ${sp.name} ajouté à tes souhaits !`); }
+    if(error){console.error(error);toast('⚠️ Échec de l\'ajout aux souhaits');return}
+    animals.push({id:inserted.id,cat,status:'planned',name:sp.name,sci:sp.sci,emoji:sp.emoji,photo:'',date:'',notes:sp.tips,qty:1,price:null});
+    toast(`✅ ${sp.name} ajouté à tes souhaits !`);
   }
 }
 
