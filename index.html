@@ -1108,8 +1108,8 @@ const PHASES = [
    desc:'Apparition de copépodes et microfaune — très bon signe de maturation.',
    tips:['Compter les petits organismes','Paramètres qui se stabilisent',"Préparer l'introduction du vivant"]},
   {days:90, emoji:'🐠', label:'Prêt pour le vivant', color:'rgba(0,201,177,.12)', border:'rgba(0,201,177,.3)',
-   desc:'Le bac est stable et mature. Tu peux commencer à introduire les premiers habitants.',
-   tips:['Commencer par les détritivores','Puis les poissons robustes','Puis les premiers coraux faciles']},
+   desc:'Le bac est stable et mature. Tu peux introduire tes premiers habitants.',
+   tips:['Poissons robustes en premier (clowns, gobies, dottybacks)','Détritivores seulement si tu as des algues à brouter','Coraux faciles ensuite, une fois la charge digérée']},
   {days:180, emoji:'🪸', label:'Bac jeune', color:'rgba(90,179,255,.1)', border:'rgba(90,179,255,.25)',
    desc:'Bac en pleine croissance. Surveiller les paramètres hebdomadairement.',
    tips:['Tests hebdo KH/Ca/Mg','Changements eau 10% toutes 2 semaines','Ajout progressif de coraux']},
@@ -1768,6 +1768,74 @@ function deltaInfo(p,cur,prevM){
 }
 function daysFromStart(){return Math.floor((Date.now()-new Date('2026-06-08').getTime())/86400000)}
 function getPhase(){const d=daysFromStart();return PHASES.find(p=>d<=p.days)||PHASES[PHASES.length-1]}
+
+// Conseil contextuel : remplace la phase calendaire dès qu'il y a du vivant.
+// Un conseil daté ("commence par les détritivores") est pire qu'inutile quand
+// l'étape est déjà franchie — on regarde donc la population réelle, la date du
+// dernier ajout et les paramètres du moment.
+function getGuidance(){
+  const days=daysFromStart();
+  const tank=animals.filter(a=>a.status==='tank');
+  const nFish=tank.reduce((s,a)=>s+(a.qty||1),0);
+  const coralsIn=corals.filter(c=>c.status==='tank');
+  const lt=getLatest();
+  const outOfRange=Object.keys(PC).filter(p=>lt[p]&&gSt(p,fv(p,lt[p].value))==='danger');
+  const staleN=p=>!lt[p]||(Date.now()-lt[p].ts)>3*864e5;
+
+  // Aucun animal : on garde la progression calendaire du cyclage.
+  if(!nFish){
+    const ph=getPhase();
+    return {emoji:ph.emoji,label:ph.label,desc:ph.desc,tips:ph.tips,color:ph.color,border:ph.border,sub:`Jour ${days} depuis la mise en eau`};
+  }
+
+  // Ancienneté du dernier ajout (les fiches sans date comptent comme anciennes).
+  const lastAdd=tank.map(a=>a.date?new Date(a.date+'T00:00:00').getTime():0).reduce((m,t)=>Math.max(m,t),0);
+  const sinceAdd=lastAdd?Math.floor((Date.now()-lastAdd)/864e5):999;
+
+  // 1) Les tout premiers jours : la charge biologique vient de bondir.
+  if(sinceAdd<=4){
+    const tips=[];
+    tips.push(staleN('nh3')||staleN('no2')?'⚠️ Tester NH₃ et NO₂ aujourd\'hui — priorité absolue':'NH₃/NO₂ à jour, continuer un jour sur deux');
+    tips.push('Nourrir léger : tout mangé en 2-3 min');
+    tips.push('Poissons cachés = normal, ils sortiront');
+    if(outOfRange.length)tips.push(`Hors plage : ${outOfRange.map(p=>PC[p].label).join(', ')} — corriger doucement`);
+    return {emoji:'🩺',label:'Acclimatation en cours',
+      desc:`${nFish} poisson${nFish>1?'s':''} introduit${nFish>1?'s':''} il y a ${sinceAdd===0?'moins d\'un jour':sinceAdd+' j'}. La charge biologique a bondi : c'est la fenêtre où un pic d'ammoniac peut apparaître.`,
+      tips,color:'rgba(245,166,35,.12)',border:'rgba(245,166,35,.35)',sub:`Jour ${days} · ${nFish} poisson${nFish>1?'s':''}`};
+  }
+
+  // 2) Premier mois : la population s'installe, pas de nouvel ajout.
+  if(sinceAdd<=28){
+    const tips=[];
+    tips.push(staleN('nh3')?'Retester NH₃/NO₂ cette semaine':'NH₃/NO₂ surveillés — bien');
+    tips.push('Attendre 3-4 semaines avant tout nouvel ajout');
+    tips.push(coralsIn.length?'Observer les coraux : ouverture, couleur':'Coraux faciles envisageables si NO₃/PO₄ stables');
+    if(outOfRange.length)tips.push(`Hors plage : ${outOfRange.map(p=>PC[p].label).join(', ')}`);
+    return {emoji:'👀',label:'Population en installation',
+      desc:`${nFish} poisson${nFish>1?'s':''} depuis ${sinceAdd} j. Territoires et hiérarchie se mettent en place — laisse le bac digérer avant d'ajouter quoi que ce soit.`,
+      tips,color:'rgba(150,164,255,.12)',border:'rgba(150,164,255,.3)',sub:`Jour ${days} · ${nFish} poisson${nFish>1?'s':''}`};
+  }
+
+  // 3) Population établie : priorité aux corrections, sinon prochaine étape.
+  const tips=[];
+  if(outOfRange.length){
+    tips.push(`À corriger : ${outOfRange.map(p=>`${PC[p].label} (${fv(p,lt[p].value)} ${PC[p].unit})`).join(', ')}`);
+    tips.push('Corriger lentement — la stabilité prime sur la valeur exacte');
+  }
+  if(!coralsIn.length&&days>=90)tips.push('Bac mûr pour tes premiers coraux mous ou LPS');
+  else if(coralsIn.length)tips.push('Suivre KH/Ca/Mg : la consommation augmente avec les coraux');
+  tips.push(nFish<8?'De la place pour 1-2 poissons de plus, un à la fois':'Population proche de la capacité du bac');
+  tips.push('Changement d\'eau 10 % toutes les 2 semaines');
+  return {emoji:outOfRange.length?'🛠️':'🌊',
+    label:outOfRange.length?'Ajustements à faire':'Bac en régime de croisière',
+    desc:outOfRange.length
+      ?`${nFish} poisson${nFish>1?'s':''} en place, mais ${outOfRange.length} paramètre${outOfRange.length>1?'s':''} hors plage. C'est la priorité avant tout nouvel ajout.`
+      :`${nFish} poisson${nFish>1?'s':''}${coralsIn.length?` et ${coralsIn.length} corail${coralsIn.length>1?'/coraux':''}`:''}, paramètres dans les clous. Le bac tourne bien.`,
+    tips,
+    color:outOfRange.length?'rgba(245,166,35,.12)':'rgba(0,201,177,.1)',
+    border:outOfRange.length?'rgba(245,166,35,.3)':'rgba(0,201,177,.25)',
+    sub:`Jour ${days} · ${nFish} poisson${nFish>1?'s':''}`};
+}
 function fdate(ts,opts){return new Date(ts).toLocaleDateString('fr-FR',opts||{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
 // Âge relatif d'un relevé : plus parlant qu'une date pour repérer d'un coup
 // d'œil un paramètre qui n'a pas été retesté depuis longtemps.
@@ -1885,17 +1953,18 @@ function renderAquarium(){
   const phase=getPhase();
 
   // Phase card
+  const g=getGuidance();
   document.getElementById('phase-card').innerHTML=`
-    <div class="phase-card" style="background:${phase.color};border-color:${phase.border};margin-bottom:10px">
+    <div class="phase-card" style="background:${g.color};border-color:${g.border};margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
-        <span style="font-size:22px">${phase.emoji}</span>
+        <span style="font-size:22px">${g.emoji}</span>
         <div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1)">${phase.label}</div>
-          <div style="font-size:11px;color:var(--t3)">Jour ${days} depuis la mise en eau</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${g.label}</div>
+          <div style="font-size:11px;color:var(--t3)">${g.sub}</div>
         </div>
       </div>
-      <div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:8px">${phase.desc}</div>
-      ${phase.tips.map(t=>`<div style="font-size:12px;color:var(--t3);padding:2px 0">→ ${t}</div>`).join('')}
+      <div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:8px">${g.desc}</div>
+      ${g.tips.map(t=>`<div style="font-size:12px;color:var(--t3);padding:2px 0">→ ${t}</div>`).join('')}
     </div>`;
 
   // Alerts
@@ -3134,7 +3203,12 @@ function renderDec(){
   if(ctxEl){
     const days=daysFromStart();
     const phase=getPhase();
-    ctxEl.innerHTML=`<div class="al a-info"><span class="ai">🔭</span><div><strong>Ton bac :</strong> ${TANK_VOLUME}L · Jour ${days} · Phase « ${phase.label} ». Swipe à droite pour adopter, à gauche pour éliminer.</div></div>`;
+    const nF=animals.filter(a=>a.status==='tank').reduce((s,a)=>s+(a.qty||1),0);
+    const nC=corals.filter(c=>c.status==='tank').length;
+    const pop=nF||nC
+      ? `${nF} poisson${nF>1?'s':''}${nC?` et ${nC} corail${nC>1?'/coraux':''}`:''} en place`
+      : `Phase « ${phase.label} »`;
+    ctxEl.innerHTML=`<div class="al a-info"><span class="ai">🔭</span><div><strong>Ton bac :</strong> ${TANK_VOLUME}L · Jour ${days} · ${pop}. Les fiches tiennent compte de ta population : compatibilité et maturité sont vérifiées pour toi.</div></div>`;
   }
   currentDeck=buildDeck(decCategory);
   renderSwipeZone();
