@@ -495,6 +495,7 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
       <div class="sm-sec">Outils</div>
       <div class="sm-it" onclick="openModal('modal-mesure');closeMenu()"><div class="sm-ico">✏️</div>Saisir une mesure</div>
       <div class="sm-it" onclick="nav('calc');closeMenu()"><div class="sm-ico">🧮</div>Calculateur</div>
+      <div class="sm-it" onclick="openReefShot();closeMenu()"><div class="sm-ico">📸</div>Photo récifale</div>
       <div class="sm-it" onclick="nav('equipment');closeMenu()"><div class="sm-ico">⚙️</div>Équipement</div>
       <div class="sm-it" onclick="nav('gallery');closeMenu()"><div class="sm-ico">📸</div>Galerie</div>
       <div class="sm-it" onclick="nav('settings');closeMenu()"><div class="sm-ico">🎛</div>Réglages</div>
@@ -742,6 +743,13 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
       </div>
       <div class="sh"><span class="shl">Plages de référence</span></div>
       <div class="gl"><table style="width:100%;font-size:12px;border-collapse:collapse" id="ref-t"></table></div>
+      <div class="sh"><span class="shl">Photos</span></div>
+      <div class="gl">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
+          <span style="font-size:13px;color:var(--t2);line-height:1.4">Filtre récifal automatique<br><span style="font-size:11px;color:var(--t4)">Corrige la dominante bleue sur toutes les photos ajoutées</span></span>
+          <input type="checkbox" id="set-reeffilter" checked onchange="reefFilterOn=this.checked;toast(this.checked?'✓ Filtre récifal activé':'Filtre récifal désactivé')" style="width:22px;height:22px;flex-shrink:0">
+        </label>
+      </div>
       <div class="sh"><span class="shl">Remise à zéro ciblée</span></div>
       <div class="gl">
         <button class="btn btn-g" style="width:100%;margin-bottom:8px" onclick="resetDiscoveries()">🧭 Réinitialiser les découvertes</button>
@@ -954,6 +962,27 @@ html,body{height:100%;width:100%;margin:0;background:var(--bg0);font-family:'Pop
 
 <div class="mo" id="modal-action-sheet"><div class="mdl"><div class="mh"></div><div id="as-title" class="as-title"></div><div id="as-items"></div></div></div>
 <div class="mo" id="modal-species"><div class="mdl" id="species-detail-content" style="position:relative"></div></div>
+<div class="mo" id="modal-reefshot">
+  <div class="mdl">
+    <div class="mh"></div><div class="mt">📸 Photo récifale</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:10px">Corrige la dominante bleue de l'éclairage pour révéler les vraies couleurs du bac.</div>
+    <label class="btn btn-o" style="width:100%;margin-bottom:10px">📷 Choisir une photo
+      <input type="file" accept="image/*" style="display:none" onchange="loadReefShot(this)">
+    </label>
+    <div id="rs-workspace" style="display:none">
+      <div style="position:relative;border-radius:var(--rs);overflow:hidden;background:#000;margin-bottom:10px">
+        <canvas id="rs-canvas" style="width:100%;display:block"></canvas>
+        <div id="rs-tag" style="position:absolute;top:8px;left:8px;background:var(--yel);color:var(--yelT);font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:999px">Après</div>
+      </div>
+      <div class="fd"><label>Intensité de la correction — <span id="rs-val">85</span> %</label>
+        <input type="range" id="rs-strength" min="0" max="100" value="85" oninput="renderReefShot()" style="width:100%">
+      </div>
+      <button class="btn btn-g" style="width:100%;margin-bottom:8px" onmousedown="showReefOriginal(true)" onmouseup="showReefOriginal(false)" onmouseleave="showReefOriginal(false)" ontouchstart="showReefOriginal(true)" ontouchend="showReefOriginal(false)">👁 Maintenir pour voir l'original</button>
+      <button class="btn btn-o" style="width:100%;margin-bottom:8px" onclick="saveReefShot()">💾 Enregistrer dans la galerie</button>
+    </div>
+    <button class="btn btn-g" style="width:100%" onclick="closeModal('modal-reefshot')">Fermer</button>
+  </div>
+</div>
 <div class="mo" id="modal-param-guidance">
   <div class="mdl" id="pgm-content"></div>
 </div>
@@ -1439,6 +1468,127 @@ function hideLoginScreen(){
 // qualité donnée. Réduit nettement le poids des photos iPhone (souvent 3-4 Mo)
 // sans dépendance externe. En cas d'échec (format non supporté, etc.),
 // retourne le fichier original tel quel — la photo reste utilisable.
+// ═══════════════════════════════════════════
+// FILTRE RÉCIFAL — correction de la dominante bleue
+// ═══════════════════════════════════════════
+// Sous éclairage actinique, le capteur sature en bleu et ne reçoit presque
+// pas de rouge : la photo vire au violet uniforme. On étire chaque canal
+// indépendamment entre ses percentiles 0,5 % et 99,5 % — le canal rouge,
+// écrasé dans les valeurs basses, retrouve ainsi toute sa dynamique.
+let reefFilterOn = true;
+
+function reefBalance(data, strength){
+  const n = data.length/4;
+  const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+  for(let i=0;i<data.length;i+=4){
+    hist[0][data[i]]++; hist[1][data[i+1]]++; hist[2][data[i+2]]++;
+  }
+  const lo=[0,0,0], hi=[255,255,255];
+  const loCut=n*0.005, hiCut=n*0.995;
+  for(let c=0;c<3;c++){
+    let acc=0;
+    for(let v=0;v<256;v++){acc+=hist[c][v];if(acc>=loCut){lo[c]=v;break}}
+    acc=0;
+    for(let v=0;v<256;v++){acc+=hist[c][v];if(acc>=hiCut){hi[c]=v;break}}
+    // Canal quasi plat : on évite une division par ~0 qui saturerait tout.
+    if(hi[c]-lo[c]<8)hi[c]=Math.min(255,lo[c]+8);
+  }
+  const lut=[new Uint8Array(256),new Uint8Array(256),new Uint8Array(256)];
+  for(let c=0;c<3;c++){
+    const range=hi[c]-lo[c];
+    for(let v=0;v<256;v++){
+      let out=Math.round((v-lo[c])/range*255);
+      out=out<0?0:out>255?255:out;
+      lut[c][v]=Math.round(v+(out-v)*strength);
+    }
+  }
+  for(let i=0;i<data.length;i+=4){
+    data[i]=lut[0][data[i]];
+    data[i+1]=lut[1][data[i+1]];
+    data[i+2]=lut[2][data[i+2]];
+  }
+}
+
+function applyReefToCanvas(canvas, strength){
+  try{
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+    reefBalance(img.data, strength);
+    ctx.putImageData(img,0,0);
+  }catch(err){ console.warn('Filtre récifal ignoré:',err); }
+}
+
+// ── Atelier photo récifale ───────────────────────────────
+let _rsBitmap=null;           // image source décodée
+let _rsShowingOriginal=false;
+
+async function loadReefShot(input){
+  const f=input.files&&input.files[0];
+  if(!f)return;
+  try{
+    _rsBitmap=await createImageBitmap(f);
+    document.getElementById('rs-workspace').style.display='';
+    renderReefShot();
+  }catch(err){ console.error(err); toast('⚠️ Image illisible'); }
+  input.value='';
+}
+
+function renderReefShot(){
+  if(!_rsBitmap)return;
+  const cv=document.getElementById('rs-canvas');
+  const maxDim=1200;
+  let {width,height}=_rsBitmap;
+  if(width>maxDim||height>maxDim){
+    const r=Math.min(maxDim/width,maxDim/height);
+    width=Math.round(width*r); height=Math.round(height*r);
+  }
+  cv.width=width; cv.height=height;
+  const ctx=cv.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(_rsBitmap,0,0,width,height);
+  const s=parseInt(document.getElementById('rs-strength').value)/100;
+  document.getElementById('rs-val').textContent=Math.round(s*100);
+  if(!_rsShowingOriginal&&s>0) applyReefToCanvas(cv,s);
+  const tag=document.getElementById('rs-tag');
+  tag.textContent=_rsShowingOriginal?'Original':'Après';
+  tag.style.background=_rsShowingOriginal?'rgba(150,164,255,.85)':'var(--yel)';
+}
+
+function showReefOriginal(on){
+  if(!_rsBitmap)return;
+  _rsShowingOriginal=on;
+  renderReefShot();
+}
+
+async function saveReefShot(){
+  if(!_rsBitmap){toast('Aucune photo chargée');return}
+  _rsShowingOriginal=false; renderReefShot();
+  const cv=document.getElementById('rs-canvas');
+  const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.8));
+  if(!blob){toast('⚠️ Export impossible');return}
+  const file=new File([blob],'recif-'+Date.now()+'.jpg',{type:'image/jpeg'});
+  toast('📤 Envoi de la photo...');
+  // Le filtre est déjà appliqué sur le canvas : on désactive la passe
+  // automatique de compressImage pour ne pas corriger deux fois.
+  const prev=reefFilterOn; reefFilterOn=false;
+  let url;
+  try{ url=await uploadPhoto(file,'gallery'); }
+  finally{ reefFilterOn=prev; }
+  if(!url){toast('⚠️ Échec de l\'envoi');return}
+  const {data:inserted,error}=await sb.from('gallery_photos').insert({owner_id:currentUser.id,photo_url:url,caption:'Photo récifale',taken_at:new Date().toISOString()}).select().single();
+  if(error){console.error(error);toast('⚠️ Échec de l\'enregistrement');return}
+  gallery.push({id:inserted.id,src:url,ts:Date.now(),name:'Photo récifale'});
+  renderGallery();
+  closeModal('modal-reefshot');
+  toast('📸 Photo enregistrée dans la galerie');
+}
+
+function openReefShot(){
+  _rsBitmap=null; _rsShowingOriginal=false;
+  document.getElementById('rs-workspace').style.display='none';
+  document.getElementById('rs-strength').value=85;
+  openModal('modal-reefshot');
+}
+
 async function compressImage(file, maxDim=1600, quality=0.75){
   try{
     if(!file.type.startsWith('image/')) return file;
@@ -1451,8 +1601,9 @@ async function compressImage(file, maxDim=1600, quality=0.75){
     }
     const canvas = document.createElement('canvas');
     canvas.width = width; canvas.height = height;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d',{willReadFrequently:true});
     ctx.drawImage(bitmap, 0, 0, width, height);
+    if(reefFilterOn) applyReefToCanvas(canvas, 0.85);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
     if(!blob) return file;
     return new File([blob], (file.name||'photo').replace(/\.[^.]+$/,'')+'.jpg', {type:'image/jpeg'});
@@ -2195,9 +2346,27 @@ function setHV(v,el){histView=v;document.querySelectorAll('#pg-history .sb').for
 async function copyAllMeasures(){
   if(!measures.length){toast('Aucune mesure à copier');return}
   const start=new Date('2026-06-08').getTime();
-  const dayOf=ts=>Math.floor((ts-start)/86400000)+1;
+  // Même convention que daysFromStart() : sinon le jour affiché en en-tête
+  // et celui des relevés du même jour diffèrent d'une unité.
+  const dayOf=ts=>Math.floor((ts-start)/86400000);
+  // Contexte réel du bac : un export qui affirme "aucun animal introduit"
+  // alors qu'il y a 7 poissons fausse toute l'analyse qu'on en demandera.
+  const tank=animals.filter(a=>a.status==='tank');
+  const nFish=tank.reduce((s,a)=>s+(a.qty||1),0);
+  const nCor=corals.filter(c=>c.status==='tank').length;
+  let popTxt;
+  if(!nFish&&!nCor){
+    popTxt='Bac en cyclage, aucun animal introduit.';
+  }else{
+    const detail=tank.map(a=>`${(a.qty||1)}× ${a.name}${a.sci?` (${a.sci})`:''}`).join(', ');
+    const addDates=tank.map(a=>a.date?new Date(a.date+'T00:00:00').getTime():NaN).filter(t=>!isNaN(t));
+    const lastAdd=addDates.length?Math.max(...addDates):0;
+    popTxt=`Population : ${nFish} poisson${nFish>1?'s':''}${nCor?` et ${nCor} corail${nCor>1?'/coraux':''}`:''}`
+      +(detail?` — ${detail}`:'')
+      +(lastAdd?`. Dernier ajout le ${new Date(lastAdd).toLocaleDateString('fr-FR')} (J${dayOf(lastAdd)}).`:'.');
+  }
   let txt='Suivi aquarium récifal — Red Sea Reefer 300 XL G3 (300 L net), mise en eau le 08/06/2026 (aujourd\'hui : jour '+daysFromStart()+').\n';
-  txt+='Sel : Red Sea Salt. Bac en cyclage, aucun animal introduit.\n\n';
+  txt+='Sel : Red Sea Salt. '+popTxt+'\n\n';
   txt+='Plages cibles :\n';
   for(const p in PC){const c=PC[p];txt+='- '+c.label+' : cible '+c.target+(c.unit?' '+c.unit:'')+' (plage '+c.min+'–'+c.max+')\n';}
   txt+='\nRelevés (chronologique, J = jour depuis la mise en eau) :\n';
